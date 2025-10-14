@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beads - Issue Tracker</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Top Navigation -->
+        <header class="header">
+            <h1>🔷 Beads Issue Tracker</h1>
+            <div class="stats">
+                <span class="stat open">Open: {{ stats.open }}</span>
+                <span class="stat in-progress">In Progress: {{ stats.in_progress }}</span>
+                <span class="stat blocked">Blocked: {{ stats.blocked }}</span>
+                <span class="stat ready">Ready: {{ stats.ready }}</span>
+            </div>
+            <div class="controls">
+                <button id="toggle-view" class="btn">Switch to Hierarchy</button>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="show-closed"> Show Closed Issues
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="show-all-deps"> Show All Dependencies
+                </label>
+                <input type="text" id="search" placeholder="Search issues..." class="search-input">
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Network Graph View -->
+            <div id="graph-view" class="view-container">
+                <div class="graph-container">
+                    <svg id="network-graph"></svg>
+                </div>
+                <div class="sidebar">
+                    <div class="work-queue">
+                        <h3>🚀 Ready to Work</h3>
+                        <div id="ready-queue">
+                            {% for issue in ready_issues %}
+                            <div class="queue-item status-{{ issue.status }}" data-issue-id="{{ issue.id }}">
+                                <div class="issue-title">
+                                    <span class="issue-type-icon {{ issue.issue_type }}">
+                                        {% if issue.issue_type == 'bug' %}🐛
+                                        {% elif issue.issue_type == 'feature' %}✨
+                                        {% elif issue.issue_type == 'task' %}📋
+                                        {% elif issue.issue_type == 'epic' %}🎯
+                                        {% elif issue.issue_type == 'chore' %}🔧
+                                        {% else %}📄{% endif %}
+                                    </span>
+                                    {{ issue.title }}
+                                </div>
+                                <div class="issue-meta">
+                                    <span class="priority priority-{{ issue.priority or 0 }}">P{{ issue.priority or 0 }}</span>
+                                    <span class="issue-id">{{ issue.id }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="issue-details" id="issue-details">
+                        <h3>Issue Details</h3>
+                        <p class="placeholder">Click an issue to see details</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hierarchy View -->
+            <div id="hierarchy-view" class="view-container" style="display: none;">
+                <div class="hierarchy-container">
+                    <h2>Dependency Tree</h2>
+                    <p class="hierarchy-description">Shows blocking dependencies as a tree structure. Root issues have no dependencies.</p>
+                    <div id="hierarchy-tree">
+                        <!-- Hierarchy will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data for JavaScript -->
+    <script type="application/json" id="all-issues-data">{{ issues | tojson }}</script>
+    <script type="application/json" id="active-issues-data">{{ active_issues | tojson }}</script>
+    <script type="application/json" id="hierarchy-data">{{ hierarchy | tojson }}</script>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
