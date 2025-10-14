@@ -1,29 +1,71 @@
 """FastAPI application for beads issue tracker web interface."""
 
 import json
+import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
+try:
+    from importlib.resources import files
+except ImportError:
+    # Fallback for older Python versions
+    files = None
+
+
+def get_package_dir():
+    """Get the package directory for static files and templates."""
+    try:
+        # Try using importlib.resources first (Python 3.9+)
+        package_files = files('beads_web')
+        return str(package_files)
+    except (ImportError, AttributeError):
+        # Fallback to __file__ method
+        return os.path.dirname(__file__)
+
+
+def find_beads_issues_file():
+    """Find .beads/issues.jsonl starting from current directory and moving up."""
+    current_dir = Path.cwd()
+    
+    # Look in current directory and parent directories
+    for path in [current_dir] + list(current_dir.parents):
+        beads_file = path / ".beads" / "issues.jsonl"
+        if beads_file.exists():
+            return str(beads_file)
+    
+    # If not found, return the default path in current directory
+    return ".beads/issues.jsonl"
+
 
 app = FastAPI(title="Beads Web", description="Web interface for beads issue tracker")
 
+# Get package directory for static files and templates
+package_dir = get_package_dir()
+static_dir = os.path.join(package_dir, "static")
+templates_dir = os.path.join(package_dir, "templates")
+
 # Mount static files and templates
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+templates = Jinja2Templates(directory=templates_dir)
 
 
-def load_issues(issues_path: str = "../.beads/issues.jsonl") -> List[Dict[str, Any]]:
+def load_issues(issues_path: str = None) -> List[Dict[str, Any]]:
     """Load issues from JSONL file."""
     issues = []
+    
+    if issues_path is None:
+        issues_path = find_beads_issues_file()
+    
     issues_file = Path(issues_path)
     
     if not issues_file.exists():
+        print(f"No issues file found at {issues_path}")
         return issues
     
     try:
@@ -47,7 +89,6 @@ def filter_active_issues(issues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 def get_ready_issues(issues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Get issues that are ready to work on (no blocking dependencies)."""
     ready_issues = []
-    issue_ids = {issue["id"] for issue in issues}
     
     for issue in issues:
         if issue.get("status") == "closed":
@@ -75,7 +116,6 @@ def get_ready_issues(issues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def build_hierarchy(issues: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Build parent-child hierarchy from issues."""
-    issue_map = {issue["id"]: issue for issue in issues}
     hierarchy = {"roots": [], "children": {}}
     
     # Find parent-child relationships
