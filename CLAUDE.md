@@ -113,6 +113,10 @@ session.expunge(issue)  # Critical for returning objects
 return issue
 ```
 
+### Database Changes
+Any changes in database structure - table, indexes etc. should always be implementing using Migrations.
+
+
 ### Test Architecture
 - **Unit Tests**: Service layer testing with temporary databases
 - **Integration Tests**: Full API testing with FastAPI TestClient
@@ -130,9 +134,11 @@ return issue
 
 ## Critical Testing Requirements
 
+When adding api endpoints or major logic changes - always write test and run them to test the coverage
+
 When making changes to database models or service layer:
 
-1. **Always run the comprehensive test suite** - 49 tests covering:
+1. **Always write and run the comprehensive test suite** - 49 tests covering:
    - 13 dependency service tests (circular detection, trees, blocking)
    - 17 issue service tests (CRUD, filtering, events)
    - 19 API integration tests (end-to-end workflows)
