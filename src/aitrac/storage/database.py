@@ -1,16 +1,48 @@
 """Database initialization and migration handling"""
 
-import os
-from pathlib import Path
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from contextlib import contextmanager
+from typing import Generator
+
+from .migrations import initialize_database_async, get_database_url
+from ..models import Base
+
+# Global database engine and session factory
+engine = None
+SessionLocal = None
+
+def get_engine():
+    """Get database engine"""
+    global engine
+    if engine is None:
+        engine = create_engine(
+            get_database_url(),
+            connect_args={"check_same_thread": False}  # SQLite specific
+        )
+    return engine
+
+def get_session_factory():
+    """Get session factory"""
+    global SessionLocal
+    if SessionLocal is None:
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+    return SessionLocal
+
+@contextmanager
+def get_db_session() -> Generator:
+    """Get database session with automatic cleanup"""
+    SessionFactory = get_session_factory()
+    session = SessionFactory()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 async def initialize_database():
-    """Initialize database on startup"""
-    # Create .aitrac directory if it doesn't exist
-    aitrac_dir = Path(".aitrac")
-    aitrac_dir.mkdir(exist_ok=True)
-    
-    print("Database initialization - placeholder implementation")
-    print(f"Using .aitrac directory: {aitrac_dir.absolute()}")
-    
-    # TODO: Implement actual database initialization and migrations
-    # This will be implemented in Phase 2
+    """Initialize database on startup with automatic migrations"""
+    await initialize_database_async()

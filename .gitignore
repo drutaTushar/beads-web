@@ -11,3 +11,4 @@ frontend/frontend
 src/aitrac/static/assets/index-*.js
 src/aitrac/static/assets/index-*.css
 .aitrac/config.json
+.aitrac/database.db

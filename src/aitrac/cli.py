@@ -11,20 +11,16 @@ import uvicorn
 
 def init_project():
     """Initialize .aitrac directory and configuration"""
-    aitrac_dir = Path(".aitrac")
-    aitrac_dir.mkdir(exist_ok=True)
+    from aitrac.storage.migrations import initialize_database
     
-    config_file = aitrac_dir / "config.json"
-    if not config_file.exists():
-        import json
-        default_config = {
-            "project_prefix": "at",
-            "source_id": "local"
-        }
-        with open(config_file, "w") as f:
-            json.dump(default_config, f, indent=2)
-    
-    print(f"Initialized aitrac in {aitrac_dir.absolute()}")
+    try:
+        initialize_database()
+        print("✅ AiTrac project initialized successfully!")
+        print("📁 Database: .aitrac/database.db")
+        print("⚙️  Config: .aitrac/config.json")
+    except Exception as e:
+        print(f"❌ Error initializing project: {e}")
+        sys.exit(1)
 
 
 def serve(host: str = "127.0.0.1", port: int = 8080, reload: bool = False):
