@@ -65,6 +65,15 @@ function initializeEventListeners() {
     // View toggle
     document.getElementById('toggle-view').addEventListener('click', toggleView);
     
+    // Ready to Work dialog
+    document.getElementById('show-ready-work').addEventListener('click', showReadyWorkDialog);
+    document.getElementById('close-ready-work').addEventListener('click', hideReadyWorkDialog);
+    document.getElementById('ready-work-dialog').addEventListener('click', function(e) {
+        if (e.target === this) {
+            hideReadyWorkDialog();
+        }
+    });
+    
     // Show closed issues toggle
     document.getElementById('show-closed').addEventListener('change', function(e) {
         showClosedIssues = e.target.checked;
@@ -88,6 +97,8 @@ function initializeEventListeners() {
         item.addEventListener('click', function() {
             const issueId = this.dataset.issueId;
             selectIssue(issueId);
+            // Close dialog if it's open
+            hideReadyWorkDialog();
         });
     });
 }
@@ -171,6 +182,14 @@ function toggleView() {
         toggleBtn.textContent = 'Switch to Hierarchy';
         currentView = 'graph';
     }
+}
+
+function showReadyWorkDialog() {
+    document.getElementById('ready-work-dialog').style.display = 'flex';
+}
+
+function hideReadyWorkDialog() {
+    document.getElementById('ready-work-dialog').style.display = 'none';
 }
 
 // Graph visualization

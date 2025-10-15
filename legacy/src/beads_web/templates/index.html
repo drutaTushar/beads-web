@@ -20,6 +20,7 @@
             </div>
             <div class="controls">
                 <button id="toggle-view" class="btn">Switch to Hierarchy</button>
+                <button id="show-ready-work" class="btn btn-secondary">Ready to Work</button>
                 <label class="checkbox-label">
                     <input type="checkbox" id="show-closed"> Show Closed Issues
                 </label>
@@ -38,30 +39,6 @@
                     <svg id="network-graph"></svg>
                 </div>
                 <div class="sidebar">
-                    <div class="work-queue">
-                        <h3>🚀 Ready to Work</h3>
-                        <div id="ready-queue">
-                            {% for issue in ready_issues %}
-                            <div class="queue-item status-{{ issue.status }}" data-issue-id="{{ issue.id }}">
-                                <div class="issue-title">
-                                    <span class="issue-type-icon {{ issue.issue_type }}">
-                                        {% if issue.issue_type == 'bug' %}🐛
-                                        {% elif issue.issue_type == 'feature' %}✨
-                                        {% elif issue.issue_type == 'task' %}📋
-                                        {% elif issue.issue_type == 'epic' %}🎯
-                                        {% elif issue.issue_type == 'chore' %}🔧
-                                        {% else %}📄{% endif %}
-                                    </span>
-                                    {{ issue.title }}
-                                </div>
-                                <div class="issue-meta">
-                                    <span class="priority priority-{{ issue.priority or 0 }}">P{{ issue.priority or 0 }}</span>
-                                    <span class="issue-id">{{ issue.id }}</span>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
                     <div class="issue-details" id="issue-details">
                         <h3>Issue Details</h3>
                         <p class="placeholder">Click an issue to see details</p>
@@ -77,6 +54,39 @@
                     <div id="hierarchy-tree">
                         <!-- Hierarchy will be rendered here -->
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ready to Work Dialog -->
+    <div id="ready-work-dialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3>🚀 Ready to Work</h3>
+                <button id="close-ready-work" class="dialog-close">&times;</button>
+            </div>
+            <div class="dialog-content">
+                <div id="ready-queue">
+                    {% for issue in ready_issues %}
+                    <div class="queue-item status-{{ issue.status }}" data-issue-id="{{ issue.id }}">
+                        <div class="issue-title">
+                            <span class="issue-type-icon {{ issue.issue_type }}">
+                                {% if issue.issue_type == 'bug' %}🐛
+                                {% elif issue.issue_type == 'feature' %}✨
+                                {% elif issue.issue_type == 'task' %}📋
+                                {% elif issue.issue_type == 'epic' %}🎯
+                                {% elif issue.issue_type == 'chore' %}🔧
+                                {% else %}📄{% endif %}
+                            </span>
+                            {{ issue.title }}
+                        </div>
+                        <div class="issue-meta">
+                            <span class="priority priority-{{ issue.priority or 0 }}">P{{ issue.priority or 0 }}</span>
+                            <span class="issue-id">{{ issue.id }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>

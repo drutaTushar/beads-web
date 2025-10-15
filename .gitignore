@@ -1,2 +1,4 @@
 .venv
 **/*.pyc
+docs
+newbeads.md
