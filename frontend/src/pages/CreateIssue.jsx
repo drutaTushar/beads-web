@@ -82,9 +82,13 @@ function CreateIssue() {
 
     const issueData = {
       ...formData,
+      issue_type: formData.type,
       priority: parseInt(formData.priority),
       estimated_minutes: formData.estimated_minutes ? parseInt(formData.estimated_minutes) : null
     }
+    
+    // Remove the frontend 'type' field since we're using 'issue_type' for the API
+    delete issueData.type
     
     Object.keys(issueData).forEach(key => {
       if (issueData[key] === '') {

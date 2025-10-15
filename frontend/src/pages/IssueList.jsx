@@ -26,7 +26,7 @@ function IssueList() {
         issue.description.toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesStatus = statusFilter === '' || issue.status === statusFilter
-      const matchesType = typeFilter === '' || issue.type === typeFilter
+      const matchesType = typeFilter === '' || issue.issue_type === typeFilter
       
       return matchesSearch && matchesStatus && matchesType
     })
@@ -111,7 +111,7 @@ function IssueList() {
                     {issue.status}
                   </span>
                   <span className="badge badge-type">
-                    {issue.type}
+                    {issue.issue_type}
                   </span>
                   <span className={`badge badge-priority ${getPriorityLabel(issue.priority)}`}>
                     {getPriorityLabel(issue.priority)}

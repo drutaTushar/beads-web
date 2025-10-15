@@ -165,7 +165,7 @@ function IssueDetails() {
 
           <div className="issue-meta-item">
             <span className="issue-meta-label">Type</span>
-            <span className="badge badge-type">{issue.type}</span>
+            <span className="badge badge-type">{issue.issue_type}</span>
           </div>
 
           <div className="issue-meta-item">
