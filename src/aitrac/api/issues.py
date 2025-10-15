@@ -194,6 +194,45 @@ async def reopen_issue(issue_id: str):
     
     return IssueResponse.from_orm(issue)
 
+@router.post("/{issue_id}/start", response_model=IssueResponse)
+async def start_issue(issue_id: str):
+    """Start working on an issue (mark as in_progress)"""
+    
+    issue = issue_service.start_issue(issue_id, actor="api")
+    if not issue:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Issue {issue_id} not found or cannot be started"
+        )
+    
+    return IssueResponse.from_orm(issue)
+
+@router.post("/{issue_id}/block", response_model=IssueResponse)
+async def block_issue(issue_id: str, reason: str = Query("", description="Reason for blocking the issue")):
+    """Block an issue"""
+    
+    issue = issue_service.block_issue(issue_id, reason=reason, actor="api")
+    if not issue:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Issue {issue_id} not found or cannot be blocked"
+        )
+    
+    return IssueResponse.from_orm(issue)
+
+@router.post("/{issue_id}/unblock", response_model=IssueResponse)
+async def unblock_issue(issue_id: str):
+    """Unblock an issue (return to open status)"""
+    
+    issue = issue_service.unblock_issue(issue_id, actor="api")
+    if not issue:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Issue {issue_id} not found or not blocked"
+        )
+    
+    return IssueResponse.from_orm(issue)
+
 @router.post("/{issue_id}/comments", response_model=SuccessResponse, status_code=201)
 async def add_comment(issue_id: str, comment_data: CommentCreate):
     """Add comment to issue"""

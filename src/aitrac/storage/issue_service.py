@@ -162,13 +162,17 @@ class IssueService:
             
             # Log status change if status was updated
             if 'status' in updates and updates['status'] != old_values['status']:
+                # Ensure both old and new values are strings for event logging
+                old_status_value = old_values['status'] if isinstance(old_values['status'], str) else old_values['status'].value
+                new_status_value = updates['status'].value if hasattr(updates['status'], 'value') else str(updates['status'])
+                
                 self._log_event(
                     session=session,
                     issue_id=issue.id,
                     event_type=EventType.STATUS_CHANGED,
                     actor=actor,
-                    old_value=old_values['status'],
-                    new_value=updates['status']
+                    old_value=old_status_value,
+                    new_value=new_status_value
                 )
             
             session.commit()
@@ -230,6 +234,96 @@ class IssueService:
                 event_type=EventType.REOPENED,
                 actor=actor,
                 old_value=Status.CLOSED.value,
+                new_value=Status.OPEN.value
+            )
+            
+            session.commit()
+            session.refresh(issue)
+            # Make issue accessible outside session
+            session.expunge(issue)
+            return issue
+    
+    def start_issue(self, issue_id: str, actor: str = "system") -> Optional[Issue]:
+        """Start working on an issue (mark as in_progress)"""
+        
+        with get_db_session() as session:
+            issue = session.query(Issue).filter(Issue.id == issue_id).first()
+            if not issue or issue.status not in [Status.OPEN, Status.BLOCKED]:
+                return None
+            
+            old_status = issue.status
+            issue.status = Status.IN_PROGRESS
+            issue.updated_at = datetime.utcnow()
+            
+            session.flush()
+            
+            # Log start event
+            self._log_event(
+                session=session,
+                issue_id=issue.id,
+                event_type=EventType.STATUS_CHANGED,
+                actor=actor,
+                old_value=old_status.value,
+                new_value=Status.IN_PROGRESS.value
+            )
+            
+            session.commit()
+            session.refresh(issue)
+            # Make issue accessible outside session
+            session.expunge(issue)
+            return issue
+    
+    def block_issue(self, issue_id: str, reason: str = "", actor: str = "system") -> Optional[Issue]:
+        """Block an issue"""
+        
+        with get_db_session() as session:
+            issue = session.query(Issue).filter(Issue.id == issue_id).first()
+            if not issue or issue.status == Status.CLOSED:
+                return None
+            
+            old_status = issue.status
+            issue.status = Status.BLOCKED
+            issue.updated_at = datetime.utcnow()
+            
+            session.flush()
+            
+            # Log block event with reason
+            self._log_event(
+                session=session,
+                issue_id=issue.id,
+                event_type=EventType.STATUS_CHANGED,
+                actor=actor,
+                old_value=old_status.value,
+                new_value=Status.BLOCKED.value,
+                comment=f"Issue blocked: {reason}" if reason else "Issue blocked"
+            )
+            
+            session.commit()
+            session.refresh(issue)
+            # Make issue accessible outside session
+            session.expunge(issue)
+            return issue
+    
+    def unblock_issue(self, issue_id: str, actor: str = "system") -> Optional[Issue]:
+        """Unblock an issue (return to open status)"""
+        
+        with get_db_session() as session:
+            issue = session.query(Issue).filter(Issue.id == issue_id).first()
+            if not issue or issue.status != Status.BLOCKED:
+                return None
+            
+            issue.status = Status.OPEN
+            issue.updated_at = datetime.utcnow()
+            
+            session.flush()
+            
+            # Log unblock event
+            self._log_event(
+                session=session,
+                issue_id=issue.id,
+                event_type=EventType.STATUS_CHANGED,
+                actor=actor,
+                old_value=Status.BLOCKED.value,
                 new_value=Status.OPEN.value
             )
             

@@ -141,6 +141,23 @@ body {
   font-size: 0.875rem;
 }
 
+/* Status Action Buttons */
+.btn-warning {
+  background-color: var(--color-warning);
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.btn-warning:hover {
+  background-color: #e0a800;
+  color: #704204;
+}
+
+.btn-warning:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 #root {
   min-height: 100vh;
 }

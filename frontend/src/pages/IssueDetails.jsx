@@ -90,6 +90,63 @@ function IssueDetails() {
     if (allIssuesError) handleQueryError(allIssuesError, showError)
   }, [allIssuesError, showError])
 
+  // Dedicated status transition mutations
+  const startIssueMutation = useMutation({
+    mutationFn: () => api.post(`/issues/${issueId}/start`, {}),
+    onSuccess: () => {
+      showSuccess('Issue started successfully')
+      queryClient.invalidateQueries({ queryKey: ['issue', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issues'] })
+    },
+    onError: (error) => handleQueryError(error, showError)
+  })
+
+  const blockIssueMutation = useMutation({
+    mutationFn: (reason) => api.post(`/issues/${issueId}/block?reason=${encodeURIComponent(reason || '')}`, {}),
+    onSuccess: () => {
+      showSuccess('Issue blocked successfully')
+      queryClient.invalidateQueries({ queryKey: ['issue', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issues'] })
+    },
+    onError: (error) => handleQueryError(error, showError)
+  })
+
+  const unblockIssueMutation = useMutation({
+    mutationFn: () => api.post(`/issues/${issueId}/unblock`, {}),
+    onSuccess: () => {
+      showSuccess('Issue unblocked successfully')
+      queryClient.invalidateQueries({ queryKey: ['issue', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issues'] })
+    },
+    onError: (error) => handleQueryError(error, showError)
+  })
+
+  const closeIssueMutation = useMutation({
+    mutationFn: (reason) => api.delete(`/issues/${issueId}?reason=${encodeURIComponent(reason || '')}`, {}),
+    onSuccess: () => {
+      showSuccess('Issue closed successfully')
+      queryClient.invalidateQueries({ queryKey: ['issue', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issues'] })
+    },
+    onError: (error) => handleQueryError(error, showError)
+  })
+
+  const reopenIssueMutation = useMutation({
+    mutationFn: () => api.post(`/issues/${issueId}/reopen`, {}),
+    onSuccess: () => {
+      showSuccess('Issue reopened successfully')
+      queryClient.invalidateQueries({ queryKey: ['issue', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issues'] })
+    },
+    onError: (error) => handleQueryError(error, showError)
+  })
+
+  // Legacy status update mutation (keep for backward compatibility)
   const updateStatusMutation = useMutation({
     mutationFn: (status) => api.put(`/issues/${issueId}`, { status }),
     onSuccess: () => {
@@ -161,10 +218,6 @@ function IssueDetails() {
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString()
-  }
-
-  const handleStatusChange = (newStatus) => {
-    updateStatusMutation.mutate(newStatus)
   }
 
   const handleCommentSubmit = (e) => {
@@ -350,19 +403,90 @@ function IssueDetails() {
           <div className="issue-details-id">#{issue.id}</div>
         </div>
         <div className="issue-details-actions">
-          {issue.status === 'open' ? (
+          {issue.status === 'open' && (
+            <>
+              <button
+                onClick={() => startIssueMutation.mutate()}
+                className="btn btn-primary"
+                disabled={startIssueMutation.isPending}
+              >
+                Start Work
+              </button>
+              <button
+                onClick={() => {
+                  const reason = prompt('Reason for blocking (optional):');
+                  if (reason !== null) blockIssueMutation.mutate(reason);
+                }}
+                className="btn btn-warning"
+                disabled={blockIssueMutation.isPending}
+              >
+                Block Issue
+              </button>
+              <button
+                onClick={() => {
+                  const reason = prompt('Reason for closing (optional):');
+                  if (reason !== null) closeIssueMutation.mutate(reason);
+                }}
+                className="btn btn-secondary"
+                disabled={closeIssueMutation.isPending}
+              >
+                Close Issue
+              </button>
+            </>
+          )}
+
+          {issue.status === 'in_progress' && (
+            <>
+              <button
+                onClick={() => {
+                  const reason = prompt('Reason for blocking (optional):');
+                  if (reason !== null) blockIssueMutation.mutate(reason);
+                }}
+                className="btn btn-warning"
+                disabled={blockIssueMutation.isPending}
+              >
+                Block Issue
+              </button>
+              <button
+                onClick={() => {
+                  const reason = prompt('Reason for closing (optional):');
+                  if (reason !== null) closeIssueMutation.mutate(reason);
+                }}
+                className="btn btn-secondary"
+                disabled={closeIssueMutation.isPending}
+              >
+                Close Issue
+              </button>
+            </>
+          )}
+
+          {issue.status === 'blocked' && (
+            <>
+              <button
+                onClick={() => unblockIssueMutation.mutate()}
+                className="btn btn-primary"
+                disabled={unblockIssueMutation.isPending}
+              >
+                Unblock Issue
+              </button>
+              <button
+                onClick={() => {
+                  const reason = prompt('Reason for closing (optional):');
+                  if (reason !== null) closeIssueMutation.mutate(reason);
+                }}
+                className="btn btn-secondary"
+                disabled={closeIssueMutation.isPending}
+              >
+                Close Issue
+              </button>
+            </>
+          )}
+
+          {issue.status === 'closed' && (
             <button
-              onClick={() => handleStatusChange('closed')}
-              className="btn btn-secondary"
-              disabled={updateStatusMutation.isPending}
-            >
-              Close Issue
-            </button>
-          ) : (
-            <button
-              onClick={() => handleStatusChange('open')}
+              onClick={() => reopenIssueMutation.mutate()}
               className="btn btn-primary"
-              disabled={updateStatusMutation.isPending}
+              disabled={reopenIssueMutation.isPending}
             >
               Reopen Issue
             </button>
@@ -639,7 +763,7 @@ function IssueDetails() {
                 <div className="event-content">
                   {event.event_type === 'commented' && event.comment}
                   {event.event_type === 'status_changed' && 
-                    `Status changed to ${event.data?.new_status}`}
+                    `Status changed from ${event.old_value || 'unknown'} to ${event.new_value || 'unknown'}`}
                   {event.event_type === 'created' && 'Issue created'}
                 </div>
               </div>
