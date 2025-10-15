@@ -10,6 +10,7 @@ from .schemas import (
     DependencyCreate,
     DependencyResponse,
     ChildIssueResponse,
+    IssueResponse,
     SuccessResponse
 )
 
@@ -221,16 +222,15 @@ async def add_blocker(issue_id: str, blocker_id: str):
 
 @router.get("/{issue_id}/children", response_model=List[ChildIssueResponse])
 async def get_children(issue_id: str):
-    """Get all child issues (issues that depend on this issue with parent-child relationship)"""
+    """Get all child issues (issues that depend on this issue with parent-child relationship) ordered by child_order"""
     
     # Check if issue exists
     issue = issue_service.get_issue(issue_id)
     if not issue:
         raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found")
     
-    # Get dependents with parent-child relationship
-    all_dependents = dependency_service.get_dependents(issue_id)
-    children_deps = [dep for dep in all_dependents if dep.type == DependencyType.PARENT_CHILD]
+    # Get children ordered by child_order
+    children_deps = dependency_service.get_children_ordered(issue_id)
     
     # Get full issue details for each child
     children_with_details = []
@@ -242,6 +242,7 @@ async def get_children(issue_id: str):
                 "issue_id": dep.issue_id,
                 "depends_on_id": dep.depends_on_id,
                 "type": dep.type,
+                "child_order": dep.child_order,
                 "created_by": dep.created_by,
                 "created_at": dep.created_at,
                 "title": child_issue.title,
@@ -275,4 +276,57 @@ async def remove_child(issue_id: str, child_id: str):
     return SuccessResponse(
         message=f"Child relationship removed successfully",
         id=f"{issue_id}->{child_id}"
+    )
+
+
+@router.get("/{issue_id}/eligible-parents", response_model=List[IssueResponse])
+async def get_eligible_parents(issue_id: str):
+    """Get issues that can be parents of this issue with hierarchy validation"""
+    
+    # Check if issue exists
+    issue = issue_service.get_issue(issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found")
+    
+    eligible_parents = dependency_service.get_eligible_parents(issue_id)
+    return [IssueResponse.from_orm(parent) for parent in eligible_parents]
+
+
+@router.get("/{issue_id}/eligible-children", response_model=List[IssueResponse])
+async def get_eligible_children(issue_id: str):
+    """Get issues that can be children of this issue with hierarchy validation"""
+    
+    # Check if issue exists
+    issue = issue_service.get_issue(issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found")
+    
+    eligible_children = dependency_service.get_eligible_children(issue_id)
+    return [IssueResponse.from_orm(child) for child in eligible_children]
+
+
+@router.post("/{issue_id}/children/reorder", response_model=SuccessResponse)
+async def reorder_children(issue_id: str, ordered_child_ids: List[str]):
+    """Reorder children of a parent issue"""
+    
+    # Check if issue exists
+    issue = issue_service.get_issue(issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found")
+    
+    success = dependency_service.reorder_children(
+        parent_id=issue_id,
+        ordered_child_ids=ordered_child_ids,
+        actor="api"
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to reorder children for issue {issue_id}"
+        )
+    
+    return SuccessResponse(
+        message=f"Children reordered successfully",
+        id=issue_id
     )

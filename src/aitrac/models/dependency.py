@@ -1,6 +1,6 @@
 """Dependency model"""
 
-from sqlalchemy import Column, String, DateTime, Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, Enum, ForeignKey, UniqueConstraint, Integer
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -17,6 +17,9 @@ class Dependency(Base):
     
     # Dependency type
     type = Column(Enum(DependencyType), nullable=False, default=DependencyType.BLOCKS)
+    
+    # Child ordering (for parent-child dependencies)
+    child_order = Column(Integer, nullable=False, default=0)
     
     # Metadata
     created_by = Column(String(100), nullable=False, default="local")
@@ -40,6 +43,7 @@ class Dependency(Base):
             "issue_id": self.issue_id,
             "depends_on_id": self.depends_on_id,
             "type": self.type.value,
+            "child_order": self.child_order,
             "created_by": self.created_by,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

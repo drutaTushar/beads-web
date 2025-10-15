@@ -1,21 +1,27 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import { api, handleQueryError } from '../utils/api'
+import { useNotification } from '../components/NotificationProvider'
 
 function IssueList() {
   const navigate = useNavigate()
+  const { showError } = useNotification()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['issues'],
-    queryFn: async () => {
-      const response = await axios.get('/api/issues')
-      return response.data
-    }
+    queryFn: () => api.get('/issues')
   })
+
+  // Handle errors with notifications
+  useEffect(() => {
+    if (error) {
+      handleQueryError(error, showError)
+    }
+  }, [error, showError])
 
   const filteredIssues = useMemo(() => {
     if (!data || !data.issues) return []

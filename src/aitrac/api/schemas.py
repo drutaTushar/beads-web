@@ -50,7 +50,7 @@ class IssueBase(BaseModel):
 
 class IssueCreate(IssueBase):
     """Schema for creating an issue"""
-    pass
+    parent_id: Optional[str] = Field(None, description="Parent issue ID for parent-child relationship")
 
 class IssueUpdate(BaseModel):
     """Schema for updating an issue"""
@@ -152,6 +152,7 @@ class ChildIssueResponse(BaseModel):
     issue_id: str
     depends_on_id: str
     type: DependencyTypeEnum
+    child_order: int
     created_by: str
     created_at: datetime
     # Issue details

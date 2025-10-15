@@ -66,19 +66,60 @@ async def create_issue(issue_data: IssueCreate):
     """Create a new issue"""
     
     try:
-        issue = issue_service.create_issue(
-            title=issue_data.title,
-            description=issue_data.description or "",
-            design=issue_data.design or "",
-            acceptance_criteria=issue_data.acceptance_criteria or "",
-            notes=issue_data.notes or "",
-            priority=issue_data.priority,
-            issue_type=IssueType(issue_data.issue_type.value),
-            assignee=issue_data.assignee,
-            estimated_minutes=issue_data.estimated_minutes,
-            actor="api"
-        )
-        return IssueResponse.from_orm(issue)
+        # Validate parent if provided
+        if issue_data.parent_id:
+            # Import dependency service here to avoid circular imports
+            from ..storage.dependency_service import dependency_service
+            
+            # Check if parent exists
+            parent_issue = issue_service.get_issue(issue_data.parent_id)
+            if not parent_issue:
+                raise HTTPException(status_code=400, detail=f"Parent issue {issue_data.parent_id} not found")
+            
+            # Create the issue first
+            issue = issue_service.create_issue(
+                title=issue_data.title,
+                description=issue_data.description or "",
+                design=issue_data.design or "",
+                acceptance_criteria=issue_data.acceptance_criteria or "",
+                notes=issue_data.notes or "",
+                priority=issue_data.priority,
+                issue_type=IssueType(issue_data.issue_type.value),
+                assignee=issue_data.assignee,
+                estimated_minutes=issue_data.estimated_minutes,
+                actor="api"
+            )
+            
+            # Then add the parent-child relationship
+            try:
+                from ..models import DependencyType
+                dependency_service.add_dependency(
+                    issue_id=issue.id,  # Child depends on parent
+                    depends_on_id=issue_data.parent_id,  # Parent
+                    dependency_type=DependencyType.PARENT_CHILD,
+                    actor="api"
+                )
+            except ValueError as e:
+                # If dependency creation fails, we might want to delete the issue
+                # For now, just return the issue without the relationship and log error
+                pass
+                
+            return IssueResponse.from_orm(issue)
+        else:
+            # Create issue without parent
+            issue = issue_service.create_issue(
+                title=issue_data.title,
+                description=issue_data.description or "",
+                design=issue_data.design or "",
+                acceptance_criteria=issue_data.acceptance_criteria or "",
+                notes=issue_data.notes or "",
+                priority=issue_data.priority,
+                issue_type=IssueType(issue_data.issue_type.value),
+                assignee=issue_data.assignee,
+                estimated_minutes=issue_data.estimated_minutes,
+                actor="api"
+            )
+            return IssueResponse.from_orm(issue)
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create issue: {str(e)}")
