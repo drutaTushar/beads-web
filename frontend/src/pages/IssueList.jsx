@@ -79,6 +79,8 @@ function IssueList() {
             <option value="task">Task</option>
             <option value="feature">Feature</option>
             <option value="bug">Bug</option>
+            <option value="epic">Epic</option>
+            <option value="chore">Chore</option>
           </select>
         </div>
       </div>
