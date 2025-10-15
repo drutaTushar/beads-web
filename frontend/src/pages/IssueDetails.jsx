@@ -1,12 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import axios from 'axios'
+import { useState, useEffect } from 'react'
+import { api, handleQueryError } from '../utils/api'
+import { useNotification } from '../components/NotificationProvider'
 
 function IssueDetails() {
   const { issueId } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { showError, showSuccess } = useNotification()
   const [commentText, setCommentText] = useState('')
   const [showDependencyTools, setShowDependencyTools] = useState(false)
   const [newChildId, setNewChildId] = useState('')
@@ -17,104 +19,134 @@ function IssueDetails() {
 
   const { data: issue, isLoading, error } = useQuery({
     queryKey: ['issue', issueId],
-    queryFn: async () => {
-      const response = await axios.get(`/api/issues/${issueId}`)
-      return response.data
-    }
+    queryFn: () => api.get(`/issues/${issueId}`)
   })
 
-  const { data: events = [] } = useQuery({
+  const { data: events = [], error: eventsError } = useQuery({
     queryKey: ['issue-events', issueId],
-    queryFn: async () => {
-      const response = await axios.get(`/api/issues/${issueId}/events`)
-      return response.data
-    },
+    queryFn: () => api.get(`/issues/${issueId}/events`),
     enabled: !!issueId
   })
 
-  const { data: children = [] } = useQuery({
+  const { data: children = [], error: childrenError } = useQuery({
     queryKey: ['issue-children', issueId],
-    queryFn: async () => {
-      const response = await axios.get(`/api/issues/${issueId}/children`)
-      return response.data
-    },
+    queryFn: () => api.get(`/issues/${issueId}/children`),
     enabled: !!issueId
   })
 
-  const { data: dependencyTree } = useQuery({
+  const { data: eligibleChildren = [], error: eligibleChildrenError } = useQuery({
+    queryKey: ['eligible-children', issueId],
+    queryFn: () => api.get(`/issues/${issueId}/eligible-children`),
+    enabled: !!issueId && showChildDropdown
+  })
+
+  const { data: dependencyTree, error: treeError } = useQuery({
     queryKey: ['issue-tree', issueId],
-    queryFn: async () => {
-      const response = await axios.get(`/api/issues/${issueId}/tree`)
-      return response.data
-    },
+    queryFn: () => api.get(`/issues/${issueId}/tree`),
     enabled: !!issueId
   })
 
-  const { data: whyBlocked } = useQuery({
+  const { data: whyBlocked, error: whyBlockedError } = useQuery({
     queryKey: ['issue-why-blocked', issueId],
-    queryFn: async () => {
-      const response = await axios.get(`/api/issues/${issueId}/why-blocked`)
-      return response.data
-    },
+    queryFn: () => api.get(`/issues/${issueId}/why-blocked`),
     enabled: !!issueId
   })
 
-  const { data: allIssues = [] } = useQuery({
+  const { data: allIssues = [], error: allIssuesError } = useQuery({
     queryKey: ['all-issues'],
     queryFn: async () => {
-      const response = await axios.get('/api/issues/?limit=100')
-      return response.data.issues
+      const response = await api.get('/issues/?limit=100')
+      return response.issues
     },
     enabled: showDependencyTools
   })
 
+  // Error handling
+  useEffect(() => {
+    if (error) handleQueryError(error, showError)
+  }, [error, showError])
+
+  useEffect(() => {
+    if (eventsError) handleQueryError(eventsError, showError)
+  }, [eventsError, showError])
+
+  useEffect(() => {
+    if (childrenError) handleQueryError(childrenError, showError)
+  }, [childrenError, showError])
+
+  useEffect(() => {
+    if (eligibleChildrenError) handleQueryError(eligibleChildrenError, showError)
+  }, [eligibleChildrenError, showError])
+
+  useEffect(() => {
+    if (treeError) handleQueryError(treeError, showError)
+  }, [treeError, showError])
+
+  useEffect(() => {
+    if (whyBlockedError) handleQueryError(whyBlockedError, showError)
+  }, [whyBlockedError, showError])
+
+  useEffect(() => {
+    if (allIssuesError) handleQueryError(allIssuesError, showError)
+  }, [allIssuesError, showError])
+
   const updateStatusMutation = useMutation({
-    mutationFn: async (status) => {
-      const response = await axios.patch(`/api/issues/${issueId}`, { status })
-      return response.data
-    },
+    mutationFn: (status) => api.put(`/issues/${issueId}`, { status }),
     onSuccess: () => {
+      showSuccess('Issue status updated successfully')
       queryClient.invalidateQueries({ queryKey: ['issue', issueId] })
       queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
       queryClient.invalidateQueries({ queryKey: ['issues'] })
-    }
+    },
+    onError: (error) => handleQueryError(error, showError)
   })
 
   const addCommentMutation = useMutation({
-    mutationFn: async (comment) => {
-      const response = await axios.post(`/api/issues/${issueId}/events`, {
-        event_type: 'comment',
-        data: { comment }
-      })
-      return response.data
-    },
+    mutationFn: (comment) => api.post(`/issues/${issueId}/events`, {
+      event_type: 'commented',
+      data: { comment }
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
+      showSuccess('Comment added successfully')
       setCommentText('')
-    }
+      queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
+    },
+    onError: (error) => handleQueryError(error, showError)
   })
 
   const addChildMutation = useMutation({
-    mutationFn: async (childId) => {
-      const response = await axios.post(`/api/issues/${issueId}/children/${childId}`)
-      return response.data
-    },
+    mutationFn: (childId) => api.post(`/issues/${issueId}/children/${childId}`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['issue-children', issueId] })
-      queryClient.invalidateQueries({ queryKey: ['issue-tree', issueId] })
+      showSuccess('Child added successfully')
       setNewChildId('')
-    }
+      setChildSearchTerm('')
+      queryClient.invalidateQueries({ queryKey: ['issue-children', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['eligible-children', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issue-tree', issueId] })
+    },
+    onError: (error) => handleQueryError(error, showError)
   })
 
   const removeChildMutation = useMutation({
-    mutationFn: async (childId) => {
-      const response = await axios.delete(`/api/issues/${issueId}/children/${childId}`)
-      return response.data
-    },
+    mutationFn: (childId) => api.delete(`/issues/${issueId}/children/${childId}`),
     onSuccess: () => {
+      showSuccess('Child removed successfully')
       queryClient.invalidateQueries({ queryKey: ['issue-children', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['eligible-children', issueId] })
       queryClient.invalidateQueries({ queryKey: ['issue-tree', issueId] })
-    }
+    },
+    onError: (error) => handleQueryError(error, showError)
+  })
+
+  const reorderChildrenMutation = useMutation({
+    mutationFn: (orderedChildIds) => api.post(`/issues/${issueId}/reorder-children`, { 
+      ordered_child_ids: orderedChildIds 
+    }),
+    onSuccess: () => {
+      showSuccess('Children reordered successfully')
+      queryClient.invalidateQueries({ queryKey: ['issue-children', issueId] })
+    },
+    onError: (error) => handleQueryError(error, showError)
   })
 
   const getPriorityLabel = (priority) => {
@@ -155,13 +187,9 @@ function IssueDetails() {
     }
   }
 
-  // Filter available issues for child selection
-  const availableIssues = allIssues.filter(issue => {
-    // Exclude current issue
-    if (issue.id === issueId) return false
-    // Exclude already existing children
-    if (children.some(child => child.issue_id === issue.id)) return false
-    // Filter by search term
+  // Filter eligible children for display
+  const availableIssues = eligibleChildren.filter(issue => {
+    // Filter by search term if provided
     if (childSearchTerm && !issue.title.toLowerCase().includes(childSearchTerm.toLowerCase()) && !issue.id.toLowerCase().includes(childSearchTerm.toLowerCase())) return false
     return true
   })
@@ -204,21 +232,19 @@ function IssueDetails() {
       return
     }
 
-    // Reorder children array
+    // Reorder children array locally first for immediate UI feedback
     const newChildren = [...children]
     const [draggedItem] = newChildren.splice(draggedChild.index, 1)
     newChildren.splice(dropIndex, 0, draggedItem)
     
-    // For now, just update local state (backend ordering support would be needed for persistence)
-    // This would require backend API changes to store and update child ordering
-    console.log('Reordered children:', newChildren.map(c => c.issue_id))
+    // Create ordered list of child IDs for the API
+    const orderedChildIds = newChildren.map(child => child.issue_id)
+    console.log('Reordered children:', orderedChildIds)
     
     setDraggedChild(null)
     
-    // TODO: Call backend API to persist the new ordering
-    // Example: await axios.patch(`/api/issues/${issueId}/children/reorder`, { 
-    //   children: newChildren.map(c => c.issue_id) 
-    // })
+    // Persist the order to the backend
+    reorderChildrenMutation.mutate(orderedChildIds)
   }
 
   // Render dependency tree recursively
@@ -557,14 +583,20 @@ function IssueDetails() {
               </div>
             )}
 
-            {dependencyTree && (
-              <div className="dependency-tree-section">
-                <h4>Dependency Tree</h4>
-                <div className="tree-info">
-                  {renderDependencyTree(dependencyTree, 0)}
-                </div>
+            <div className="dependency-tree-section">
+              <h4>Dependency Tree</h4>
+              <div className="tree-info">
+                {treeError ? (
+                  <div className="error-message">
+                    Failed to load dependency tree
+                  </div>
+                ) : dependencyTree ? (
+                  renderDependencyTree(dependencyTree, 0)
+                ) : (
+                  <div className="loading-message">Loading dependency tree...</div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>

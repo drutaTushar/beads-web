@@ -1,3 +1,18 @@
+/* CSS Variables */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --border-color: #dee2e6;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --text-muted: #868e96;
+  --color-success: #28a745;
+  --color-danger: #dc3545;
+  --color-warning: #ffc107;
+  --color-info: #17a2b8;
+}
+
 /* Basic CSS Reset and Layout */
 * {
   margin: 0;
@@ -105,6 +120,25 @@ body {
 
 .notification-close:hover {
   opacity: 1;
+}
+
+/* Error and Loading Messages */
+.error-message {
+  color: var(--color-danger);
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.loading-message {
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
 }
 
 #root {

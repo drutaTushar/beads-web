@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
+import { api, handleQueryError } from '../utils/api'
+import { useNotification } from '../components/NotificationProvider'
 
 function CreateIssue() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { showError, showSuccess } = useNotification()
   
   const [formData, setFormData] = useState({
     title: '',
@@ -15,27 +17,25 @@ function CreateIssue() {
     design: '',
     acceptance_criteria: '',
     assignee: '',
-    estimated_minutes: ''
+    estimated_minutes: '',
+    parent_id: ''
   })
+
+  const [showParentDropdown, setShowParentDropdown] = useState(false)
+  const [parentSearchTerm, setParentSearchTerm] = useState('')
   
   const [errors, setErrors] = useState({})
 
   const createIssueMutation = useMutation({
-    mutationFn: async (issueData) => {
-      const response = await axios.post('/api/issues', issueData)
-      return response.data
-    },
+    mutationFn: (issueData) => api.post('/issues', issueData),
     onSuccess: (data) => {
+      showSuccess('Issue created successfully')
       queryClient.invalidateQueries({ queryKey: ['issues'] })
       navigate(`/issues/${data.id}`)
     },
     onError: (error) => {
-      console.error('Error creating issue:', error)
-      if (error.response?.data?.detail) {
-        setErrors({ submit: error.response.data.detail })
-      } else {
-        setErrors({ submit: 'Failed to create issue. Please try again.' })
-      }
+      handleQueryError(error, showError)
+      setErrors({ submit: error.message })
     }
   })
 

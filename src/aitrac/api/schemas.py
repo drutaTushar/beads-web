@@ -164,3 +164,7 @@ class ChildIssueResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class ReorderChildrenRequest(BaseModel):
+    """Schema for reordering children"""
+    ordered_child_ids: List[str] = Field(..., description="List of child issue IDs in desired order")

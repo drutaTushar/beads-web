@@ -47,11 +47,25 @@ class DependencyService:
             if self._would_create_cycle(session, issue_id, depends_on_id):
                 raise ValueError(f"Adding dependency would create a circular dependency")
             
+            # Determine child_order for parent-child dependencies
+            child_order = 0
+            if dependency_type == DependencyType.PARENT_CHILD:
+                # Get the highest order for existing children of this parent
+                max_order = session.query(Dependency.child_order).filter(
+                    and_(
+                        Dependency.depends_on_id == depends_on_id,
+                        Dependency.type == DependencyType.PARENT_CHILD
+                    )
+                ).order_by(desc(Dependency.child_order)).first()
+                
+                child_order = (max_order[0] + 1) if max_order else 0
+            
             # Create dependency
             dependency = Dependency(
                 issue_id=issue_id,
                 depends_on_id=depends_on_id,
                 type=dependency_type,
+                child_order=child_order,
                 created_by=actor
             )
             
@@ -157,9 +171,30 @@ class DependencyService:
             
             visited.add(current_id)
             
+            # Get issue details
+            with get_db_session() as session:
+                issue = session.query(Issue).filter(Issue.id == current_id).first()
+                if issue:
+                    # Extract values while session is active
+                    title = issue.title
+                    status = issue.status.value
+                    priority = issue.priority
+                    issue_type = issue.issue_type.value
+                    session.expunge(issue)
+                else:
+                    title = f"Issue {current_id}"
+                    status = "unknown"
+                    priority = 2
+                    issue_type = "task"
+            
             dependencies = self.get_dependencies(current_id)
             tree = {
                 "issue_id": current_id,
+                "id": current_id,  # Add id field for compatibility
+                "title": title,
+                "status": status,
+                "priority": priority,
+                "issue_type": issue_type,
                 "dependencies": [],
                 "circular": False
             }
@@ -339,6 +374,167 @@ class DependencyService:
                     return False
         
         return True
+
+    def get_eligible_parents(self, issue_id: str) -> List[Issue]:
+        """Get issues that can be parents of this issue with hierarchy validation"""
+        
+        with get_db_session() as session:
+            current_issue = session.query(Issue).filter(Issue.id == issue_id).first()
+            if not current_issue:
+                return []
+            
+            # Get all issues except current one and its descendants
+            all_issues = (
+                session.query(Issue)
+                .filter(Issue.id != issue_id)
+                .all()
+            )
+            
+            eligible_parents = []
+            
+            for potential_parent in all_issues:
+                # Check if this would create a cycle
+                if self._would_create_cycle(session, potential_parent.id, issue_id):
+                    continue
+                
+                # Check if potential parent already has a parent (prevent deep nesting)
+                existing_parent = session.query(Dependency).filter(
+                    and_(
+                        Dependency.issue_id == potential_parent.id,
+                        Dependency.type == DependencyType.PARENT_CHILD
+                    )
+                ).first()
+                
+                # Skip if potential parent already has a parent and it's not the current issue
+                if existing_parent and existing_parent.depends_on_id != issue_id:
+                    continue
+                
+                # Apply issue type hierarchy rules
+                if self._is_valid_parent_child_type(potential_parent.issue_type, current_issue.issue_type):
+                    eligible_parents.append(potential_parent)
+            
+            # Expunge to make accessible outside session
+            for issue in eligible_parents:
+                session.expunge(issue)
+            
+            return eligible_parents
+
+    def get_eligible_children(self, issue_id: str) -> List[Issue]:
+        """Get issues that can be children of this issue with hierarchy validation"""
+        
+        with get_db_session() as session:
+            current_issue = session.query(Issue).filter(Issue.id == issue_id).first()
+            if not current_issue:
+                return []
+            
+            # Get all issues except current one
+            all_issues = (
+                session.query(Issue)
+                .filter(Issue.id != issue_id)
+                .all()
+            )
+            
+            eligible_children = []
+            
+            for potential_child in all_issues:
+                # Check if this issue already has a parent
+                existing_parent = session.query(Dependency).filter(
+                    and_(
+                        Dependency.issue_id == potential_child.id,
+                        Dependency.type == DependencyType.PARENT_CHILD
+                    )
+                ).first()
+                
+                # Skip if already has a parent and it's not the current issue
+                if existing_parent and existing_parent.depends_on_id != issue_id:
+                    continue
+                
+                # Check if this would create a cycle
+                if self._would_create_cycle(session, issue_id, potential_child.id):
+                    continue
+                
+                # Apply issue type hierarchy rules
+                if self._is_valid_parent_child_type(current_issue.issue_type, potential_child.issue_type):
+                    eligible_children.append(potential_child)
+            
+            # Expunge to make accessible outside session
+            for issue in eligible_children:
+                session.expunge(issue)
+            
+            return eligible_children
+
+    def _is_valid_parent_child_type(self, parent_type, child_type) -> bool:
+        """Check if parent-child type combination is valid based on hierarchy rules"""
+        
+        # Convert to string values if they're enum objects
+        if hasattr(parent_type, 'value'):
+            parent_type = parent_type.value
+        if hasattr(child_type, 'value'):
+            child_type = child_type.value
+        
+        parent_type = parent_type.lower()
+        child_type = child_type.lower()
+        
+        # Define hierarchy rules
+        valid_combinations = {
+            'epic': ['feature', 'task', 'bug', 'chore'],
+            'feature': ['task', 'feature'],
+            'task': ['task', 'chore'],
+            'bug': ['task'],
+            'chore': ['task', 'chore']
+        }
+        
+        return child_type in valid_combinations.get(parent_type, [])
+
+    def reorder_children(self, parent_id: str, ordered_child_ids: List[str], actor: str = "system") -> bool:
+        """Reorder children of a parent issue"""
+        
+        with get_db_session() as session:
+            # Verify parent exists
+            parent = session.query(Issue).filter(Issue.id == parent_id).first()
+            if not parent:
+                return False
+            
+            # Get all existing child dependencies
+            existing_children = session.query(Dependency).filter(
+                and_(
+                    Dependency.depends_on_id == parent_id,
+                    Dependency.type == DependencyType.PARENT_CHILD
+                )
+            ).all()
+            
+            # Create a map of existing children
+            existing_map = {dep.issue_id: dep for dep in existing_children}
+            
+            # Update the order
+            for index, child_id in enumerate(ordered_child_ids):
+                if child_id in existing_map:
+                    existing_map[child_id].child_order = index
+            
+            session.commit()
+            return True
+
+    def get_children_ordered(self, parent_id: str) -> List[Dependency]:
+        """Get children dependencies ordered by child_order"""
+        
+        with get_db_session() as session:
+            children = (
+                session.query(Dependency)
+                .filter(
+                    and_(
+                        Dependency.depends_on_id == parent_id,
+                        Dependency.type == DependencyType.PARENT_CHILD
+                    )
+                )
+                .order_by(Dependency.child_order, Dependency.created_at)
+                .all()
+            )
+            
+            # Expunge to make accessible outside session
+            for dep in children:
+                session.expunge(dep)
+            
+            return children
 
 
 # Global service instance

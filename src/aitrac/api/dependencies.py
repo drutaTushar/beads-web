@@ -11,6 +11,7 @@ from .schemas import (
     DependencyResponse,
     ChildIssueResponse,
     IssueResponse,
+    ReorderChildrenRequest,
     SuccessResponse
 )
 
@@ -150,6 +151,7 @@ async def why_blocked(issue_id: str):
     }
 
 
+
 @router.post("/{issue_id}/children/{child_id}", response_model=DependencyResponse, status_code=201)
 async def add_child(issue_id: str, child_id: str):
     """Add a child issue (convenience endpoint for parent-child dependency)
@@ -279,6 +281,33 @@ async def remove_child(issue_id: str, child_id: str):
     )
 
 
+@router.post("/{issue_id}/reorder-children", response_model=SuccessResponse)
+async def reorder_children(issue_id: str, request: ReorderChildrenRequest):
+    """Reorder children of a parent issue"""
+    
+    # Check if issue exists
+    issue = issue_service.get_issue(issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found")
+    
+    success = dependency_service.reorder_children(
+        parent_id=issue_id,
+        ordered_child_ids=request.ordered_child_ids,
+        actor="api"
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to reorder children for issue {issue_id}"
+        )
+    
+    return SuccessResponse(
+        message=f"Children reordered successfully",
+        id=issue_id
+    )
+
+
 @router.get("/{issue_id}/eligible-parents", response_model=List[IssueResponse])
 async def get_eligible_parents(issue_id: str):
     """Get issues that can be parents of this issue with hierarchy validation"""
@@ -305,28 +334,3 @@ async def get_eligible_children(issue_id: str):
     return [IssueResponse.from_orm(child) for child in eligible_children]
 
 
-@router.post("/{issue_id}/children/reorder", response_model=SuccessResponse)
-async def reorder_children(issue_id: str, ordered_child_ids: List[str]):
-    """Reorder children of a parent issue"""
-    
-    # Check if issue exists
-    issue = issue_service.get_issue(issue_id)
-    if not issue:
-        raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found")
-    
-    success = dependency_service.reorder_children(
-        parent_id=issue_id,
-        ordered_child_ids=ordered_child_ids,
-        actor="api"
-    )
-    
-    if not success:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Failed to reorder children for issue {issue_id}"
-        )
-    
-    return SuccessResponse(
-        message=f"Children reordered successfully",
-        id=issue_id
-    )
