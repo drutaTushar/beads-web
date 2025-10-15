@@ -18,9 +18,9 @@ function IssueList() {
   })
 
   const filteredIssues = useMemo(() => {
-    if (!data) return []
+    if (!data || !data.issues) return []
     
-    return data.filter(issue => {
+    return data.issues.filter(issue => {
       const matchesSearch = searchTerm === '' || 
         issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         issue.description.toLowerCase().includes(searchTerm.toLowerCase())
