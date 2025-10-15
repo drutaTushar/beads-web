@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { api, handleQueryError } from '../utils/api'
 import { useNotification } from '../components/NotificationProvider'
+import EditableField from '../components/EditableField'
 
 function IssueDetails() {
   const { issueId } = useParams()
@@ -154,6 +155,18 @@ function IssueDetails() {
       queryClient.invalidateQueries({ queryKey: ['issue', issueId] })
       queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
       queryClient.invalidateQueries({ queryKey: ['issues'] })
+    },
+    onError: (error) => handleQueryError(error, showError)
+  })
+
+  // Field update mutation for inline editing
+  const updateFieldMutation = useMutation({
+    mutationFn: (fieldUpdate) => api.put(`/issues/${issueId}`, fieldUpdate),
+    onSuccess: (data, variables) => {
+      const fieldName = Object.keys(variables)[0]
+      showSuccess(`${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} updated successfully`)
+      queryClient.invalidateQueries({ queryKey: ['issue', issueId] })
+      queryClient.invalidateQueries({ queryKey: ['issue-events', issueId] })
     },
     onError: (error) => handleQueryError(error, showError)
   })
@@ -399,7 +412,14 @@ function IssueDetails() {
     <div>
       <div className="issue-details-header">
         <div>
-          <h1 className="issue-details-title">{issue.title}</h1>
+          <EditableField
+            value={issue.title}
+            onSave={(newTitle) => updateFieldMutation.mutateAsync({ title: newTitle })}
+            placeholder="Enter issue title..."
+            className="issue-title-editable"
+            required={true}
+            maxLength={500}
+          />
           <div className="issue-details-id">#{issue.id}</div>
         </div>
         <div className="issue-details-actions">
@@ -497,23 +517,52 @@ function IssueDetails() {
       <div className="issue-details-content">
         <div className="issue-main-content">
           <div className="issue-section">
-            <h3>Description</h3>
-            <p>{issue.description || 'No description provided.'}</p>
+            <EditableField
+              label="Problem Statement (what/why)"
+              value={issue.description}
+              onSave={(newDescription) => updateFieldMutation.mutateAsync({ description: newDescription })}
+              placeholder="Click to add a problem statement..."
+              multiline={true}
+              className="issue-description-editable"
+              maxLength={5000}
+            />
           </div>
 
-          {issue.design && (
-            <div className="issue-section">
-              <h3>Design</h3>
-              <p>{issue.design}</p>
-            </div>
-          )}
+          <div className="issue-section">
+            <EditableField
+              label="Solution Design (how)"
+              value={issue.design}
+              onSave={(newDesign) => updateFieldMutation.mutateAsync({ design: newDesign })}
+              placeholder="Click to add solution design..."
+              multiline={true}
+              className="issue-design-editable"
+              maxLength={5000}
+            />
+          </div>
 
-          {issue.acceptance_criteria && (
-            <div className="issue-section">
-              <h3>Acceptance Criteria</h3>
-              <p>{issue.acceptance_criteria}</p>
-            </div>
-          )}
+          <div className="issue-section">
+            <EditableField
+              label="Acceptance Criteria"
+              value={issue.acceptance_criteria}
+              onSave={(newCriteria) => updateFieldMutation.mutateAsync({ acceptance_criteria: newCriteria })}
+              placeholder="Click to add acceptance criteria..."
+              multiline={true}
+              className="issue-criteria-editable"
+              maxLength={5000}
+            />
+          </div>
+
+          <div className="issue-section">
+            <EditableField
+              label="Working Notes"
+              value={issue.notes}
+              onSave={(newNotes) => updateFieldMutation.mutateAsync({ notes: newNotes })}
+              placeholder="Click to add working notes..."
+              multiline={true}
+              className="issue-notes-editable"
+              maxLength={5000}
+            />
+          </div>
         </div>
 
         <div className="issue-sidebar">
