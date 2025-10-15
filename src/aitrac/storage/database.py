@@ -43,6 +43,14 @@ def get_db_session() -> Generator:
     finally:
         session.close()
 
+def reset_database_globals():
+    """Reset global database engine and session factory for testing"""
+    global engine, SessionLocal
+    if engine:
+        engine.dispose()
+    engine = None
+    SessionLocal = None
+
 async def initialize_database():
     """Initialize database on startup with automatic migrations"""
     await initialize_database_async()

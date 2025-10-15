@@ -263,13 +263,19 @@ class IssueService:
         """Get events for an issue"""
         
         with get_db_session() as session:
-            return (
+            events = (
                 session.query(Event)
                 .filter(Event.issue_id == issue_id)
                 .order_by(desc(Event.created_at))
                 .limit(limit)
                 .all()
             )
+            
+            # Make events accessible outside session
+            for event in events:
+                session.expunge(event)
+            
+            return events
     
     def _log_event(
         self,
