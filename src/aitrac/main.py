@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import os
 import mimetypes
@@ -22,6 +23,23 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+# Add CORS middleware for development (when frontend runs on different port)
+# In production, the frontend is served from the same origin, so no CORS needed
+import os
+if os.getenv("AITRAC_ENV") == "development" or os.path.exists("frontend"):
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173", 
+            "http://localhost:3000",  # Alternative React dev server port
+            "http://127.0.0.1:3000"
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Include API routers
 app.include_router(issues_router, prefix="/api/issues", tags=["issues"])
