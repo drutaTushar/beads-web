@@ -146,3 +146,20 @@ class ErrorResponse(BaseModel):
     """Schema for error responses"""
     error: str
     detail: Optional[str] = None
+
+class ChildIssueResponse(BaseModel):
+    """Schema for child issue responses with full issue details"""
+    issue_id: str
+    depends_on_id: str
+    type: DependencyTypeEnum
+    created_by: str
+    created_at: datetime
+    # Issue details
+    title: str
+    description: Optional[str] = None
+    status: StatusEnum
+    priority: int
+    issue_type: IssueTypeEnum
+    
+    class Config:
+        from_attributes = True

@@ -198,12 +198,25 @@ body {
   font-weight: 600;
   color: #333;
   margin-bottom: 0.25rem;
+  flex: 1;
+}
+
+.issue-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
 }
 
 .issue-id {
-  color: #666;
+  color: #0066cc;
   font-size: 0.875rem;
   font-weight: 500;
+  font-family: monospace;
+  background: #f8f9fa;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .issue-badges {
@@ -476,4 +489,451 @@ body {
 .event-content {
   color: #666;
   line-height: 1.5;
+}
+
+/* Ready Work Styles */
+.ready-work-header {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.ready-work-description {
+  margin: 0.5rem 0 0 0;
+  opacity: 0.9;
+  font-size: 1.125rem;
+}
+
+.ready-work-summary {
+  background: #e8f5e8;
+  color: #155724;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-size: 1.125rem;
+  border: 1px solid #c3e6cb;
+}
+
+.ready-issue-card {
+  border-left: 4px solid #28a745;
+  background: linear-gradient(to right, #f8fff9, #ffffff);
+  transition: all 0.2s ease;
+}
+
+.ready-issue-card:hover {
+  border-left-color: #20c997;
+  background: linear-gradient(to right, #f0fff4, #f8fff9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+}
+
+.ready-indicator {
+  background: #28a745;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 0 0 8px 8px;
+  text-align: center;
+  margin: 1rem -1.5rem -1.5rem -1.5rem;
+}
+
+.ready-badge {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.ready-work-list {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Dependency Management Styles */
+.dependency-section {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dependency-tools {
+  margin-bottom: 1.5rem;
+}
+
+.dependency-management {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 1.5rem;
+}
+
+.child-management {
+  margin-bottom: 2rem;
+}
+
+.add-child-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.add-child-form .form-input {
+  flex: 1;
+}
+
+.children-list {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.child-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  background: white;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.child-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.child-info {
+  flex: 1;
+}
+
+.child-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.child-id {
+  font-family: monospace;
+  font-weight: 500;
+  color: #0066cc;
+  background: #f8f9fa;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.child-title {
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+}
+
+.child-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.child-meta .badge {
+  font-size: 0.75rem;
+}
+
+.child-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-direction: column;
+}
+
+.why-blocked-section {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.blocked-info p {
+  margin-bottom: 1rem;
+  color: #856404;
+  font-weight: 500;
+}
+
+.blocking-chain {
+  background: white;
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.blocking-chain ol {
+  margin: 0.5rem 0 0 1.5rem;
+}
+
+.blocking-chain li {
+  margin-bottom: 0.5rem;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #0066cc;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.link-button:hover {
+  color: #004499;
+}
+
+.dependency-tree-section {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.tree-display {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 1rem;
+  font-size: 0.875rem;
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+  border: 1px solid #dc3545;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+/* Child search dropdown */
+.child-search-container {
+  position: relative;
+  flex: 1;
+}
+
+.child-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 2px;
+}
+
+.child-dropdown-item {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.child-dropdown-item:hover {
+  background: var(--bg-secondary);
+}
+
+.child-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.child-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.child-dropdown-id {
+  font-family: monospace;
+  font-size: 0.875rem;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.child-dropdown-title {
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.child-dropdown-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.add-child-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+/* Drag and drop styles */
+.drag-hint {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.child-item {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.child-item.dragging {
+  opacity: 0.6;
+  transform: rotate(2deg);
+}
+
+.child-item.drag-over {
+  border: 2px dashed #007bff;
+  background: rgba(0, 123, 255, 0.05);
+}
+
+.drag-handle {
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  cursor: grab;
+  font-weight: bold;
+  padding: 0.25rem;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.drag-handle:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.child-item:hover .drag-handle {
+  opacity: 1;
+}
+
+.child-item .drag-handle {
+  opacity: 0.5;
+}
+
+/* Dependency tree visualization */
+.tree-node {
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.75rem;
+  transition: background-color 0.2s;
+}
+
+.tree-node-content:hover {
+  background: var(--bg-tertiary);
+}
+
+.tree-node-connector {
+  display: flex;
+  align-items: center;
+  margin-right: 0.5rem;
+  font-family: monospace;
+  color: var(--text-secondary);
+}
+
+.tree-line {
+  margin-right: 0.25rem;
+}
+
+.tree-branch {
+  margin-right: 0.5rem;
+}
+
+.tree-node-info {
+  flex: 1;
+}
+
+.tree-node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.tree-node-id {
+  font-family: monospace;
+  font-size: 0.875rem;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.tree-node-title {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.tree-node-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tree-node-actions {
+  margin-left: 0.5rem;
+}
+
+.tree-children,
+.tree-dependencies {
+  position: relative;
+}
+
+.tree-children::before,
+.tree-dependencies::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: -0.5rem;
+  bottom: 0.5rem;
+  width: 1px;
+  background: var(--border-color);
+}
+
+.btn-danger:disabled {
+  background-color: #6c757d;
+  border-color: #6c757d;
 }

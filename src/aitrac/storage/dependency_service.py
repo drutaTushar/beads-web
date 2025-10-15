@@ -271,6 +271,74 @@ class DependencyService:
             new_value=json.dumps(event_data)
         )
         session.add(event)
+    
+    def get_ready_work(self, limit: int = 50) -> List[Issue]:
+        """Get ready work - issues that can be started (Ready() algorithm)
+        
+        An issue is ready if:
+        1. It is open (not closed)
+        2. All its blocking dependencies are closed/completed
+        3. All its parent issues are also not blocked
+        """
+        
+        with get_db_session() as session:
+            from .issue_service import issue_service
+            
+            # Get all open issues
+            open_issues = (
+                session.query(Issue)
+                .filter(Issue.status.in_(["open", "in_progress"]))
+                .all()
+            )
+            
+            ready_issues = []
+            
+            for issue in open_issues:
+                if self._is_issue_ready(session, issue):
+                    ready_issues.append(issue)
+                    if len(ready_issues) >= limit:
+                        break
+            
+            # Sort by priority (0 highest, 4 lowest)
+            ready_issues.sort(key=lambda x: x.priority)
+            
+            # Expunge to make accessible outside session
+            for issue in ready_issues:
+                session.expunge(issue)
+            
+            return ready_issues
+    
+    def _is_issue_ready(self, session: Session, issue: Issue) -> bool:
+        """Check if an issue is ready to start"""
+        
+        # Get all dependencies for this issue
+        dependencies = (
+            session.query(Dependency)
+            .filter(Dependency.issue_id == issue.id)
+            .all()
+        )
+        
+        for dep in dependencies:
+            # Get the dependent issue
+            dependent_issue = (
+                session.query(Issue)
+                .filter(Issue.id == dep.depends_on_id)
+                .first()
+            )
+            
+            if not dependent_issue:
+                continue
+                
+            # If dependency is not closed, this issue is not ready
+            if dependent_issue.status != "closed":
+                return False
+                
+            # For parent-child relationships, check recursively that parent is not blocked
+            if dep.type == DependencyType.PARENT_CHILD:
+                if not self._is_issue_ready(session, dependent_issue):
+                    return False
+        
+        return True
 
 
 # Global service instance

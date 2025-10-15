@@ -185,3 +185,38 @@ async def get_issue_events(
     
     events = issue_service.get_issue_events(issue_id, limit=limit)
     return [EventResponse.from_orm(event) for event in events]
+
+@router.post("/{issue_id}/events", response_model=SuccessResponse, status_code=201)
+async def add_issue_event(issue_id: str, event_data: dict):
+    """Add an event to an issue (primarily for comments)"""
+    
+    # Check if issue exists
+    issue = issue_service.get_issue(issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found")
+    
+    # Handle comment events
+    if event_data.get("event_type") == "comment":
+        comment = event_data.get("data", {}).get("comment")
+        if not comment:
+            raise HTTPException(status_code=400, detail="Comment data is required")
+        
+        success = issue_service.add_comment(
+            issue_id=issue_id,
+            comment=comment,
+            actor="api"
+        )
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to add comment")
+        
+        return SuccessResponse(
+            message="Comment added successfully",
+            id=issue_id
+        )
+    
+    # For other event types, return an error for now
+    raise HTTPException(
+        status_code=400, 
+        detail=f"Unsupported event type: {event_data.get('event_type')}"
+    )

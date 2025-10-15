@@ -44,7 +44,7 @@ if os.getenv("AITRAC_ENV") == "development" or os.path.exists("frontend"):
 # Include API routers
 app.include_router(issues_router, prefix="/api/issues", tags=["issues"])
 app.include_router(dependencies_router, prefix="/api/issues", tags=["dependencies"])
-app.include_router(work_router, prefix="/api", tags=["work"])
+app.include_router(work_router, prefix="/api/work", tags=["work"])
 
 # Static files (React build)
 static_dir = Path(__file__).parent / "static"

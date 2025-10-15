@@ -105,8 +105,10 @@ function IssueList() {
             >
               <div className="issue-header">
                 <div>
-                  <div className="issue-title">{issue.title}</div>
-                  <div className="issue-id">#{issue.id}</div>
+                  <div className="issue-title-row">
+                    <span className="issue-id">#{issue.id}</span>
+                    <span className="issue-title">{issue.title}</span>
+                  </div>
                 </div>
                 <div className="issue-badges">
                   <span className={`badge badge-status ${issue.status}`}>

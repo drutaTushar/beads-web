@@ -1,13 +1,24 @@
 """Work management API endpoints"""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
+from typing import List
+
+from ..storage.dependency_service import dependency_service
+from .schemas import IssueResponse
 
 router = APIRouter()
 
-@router.get("/ready")
-async def get_ready_work():
-    """Get ready work (Ready() algorithm)"""
-    return {"ready_issues": [], "message": "Ready work endpoint - placeholder"}
+@router.get("/ready", response_model=List[IssueResponse])
+async def get_ready_work(limit: int = Query(50, ge=1, le=100, description="Maximum number of ready issues to return")):
+    """Get ready work (Ready() algorithm)
+    
+    Returns issues that can be started immediately:
+    - Open issues with all dependencies closed
+    - Recursive dependency resolution for parent-child relationships
+    - Sorted by priority (0 highest, 4 lowest)
+    """
+    ready_issues = dependency_service.get_ready_work(limit=limit)
+    return [IssueResponse.from_orm(issue) for issue in ready_issues]
 
 @router.get("/blocked")
 async def get_blocked_issues():
