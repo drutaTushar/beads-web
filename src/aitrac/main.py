@@ -25,7 +25,7 @@ app = FastAPI(
 
 # Include API routers
 app.include_router(issues_router, prefix="/api/issues", tags=["issues"])
-app.include_router(dependencies_router, prefix="/api", tags=["dependencies"])
+app.include_router(dependencies_router, prefix="/api/issues", tags=["dependencies"])
 app.include_router(work_router, prefix="/api", tags=["work"])
 
 # Static files (React build)
