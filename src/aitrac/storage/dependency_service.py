@@ -44,7 +44,7 @@ class DependencyService:
                 return existing
             
             # Check for circular dependencies
-            if self._would_create_cycle(session, issue_id, depends_on_id):
+            if self._would_create_cycle(session, issue_id, depends_on_id, dependency_type):
                 raise ValueError(f"Adding dependency would create a circular dependency")
             
             # Determine child_order for parent-child dependencies
@@ -253,8 +253,16 @@ class DependencyService:
             
             return []  # No blocking path found
     
-    def _would_create_cycle(self, session: Session, from_id: str, to_id: str) -> bool:
+    def _would_create_cycle(self, session: Session, from_id: str, to_id: str, dependency_type: DependencyType = None) -> bool:
         """Check if adding a dependency would create a circular dependency"""
+        
+        # If no dependency type specified, check all types
+        if dependency_type is None:
+            dependency_types_to_check = [DependencyType.BLOCKS, DependencyType.PARENT_CHILD, DependencyType.RELATED]
+        else:
+            # For parent-child relationships, only check parent-child cycles
+            # For blocking relationships, only check blocking cycles  
+            dependency_types_to_check = [dependency_type]
         
         # Start from to_id and see if we can reach from_id
         visited = set()
@@ -270,10 +278,15 @@ class DependencyService:
             if current_id == from_id:
                 return True
             
-            # Get all dependencies of current issue
+            # Get dependencies of current issue for the specific types we're checking
             dependencies = (
                 session.query(Dependency)
-                .filter(Dependency.issue_id == current_id)
+                .filter(
+                    and_(
+                        Dependency.issue_id == current_id,
+                        Dependency.type.in_(dependency_types_to_check)
+                    )
+                )
                 .all()
             )
             
@@ -394,7 +407,7 @@ class DependencyService:
             
             for potential_parent in all_issues:
                 # Check if this would create a cycle
-                if self._would_create_cycle(session, potential_parent.id, issue_id):
+                if self._would_create_cycle(session, potential_parent.id, issue_id, DependencyType.PARENT_CHILD):
                     continue
                 
                 # Check if potential parent already has a parent (prevent deep nesting)
@@ -449,8 +462,8 @@ class DependencyService:
                 if existing_parent and existing_parent.depends_on_id != issue_id:
                     continue
                 
-                # Check if this would create a cycle
-                if self._would_create_cycle(session, issue_id, potential_child.id):
+                # Check if this would create a cycle (only check parent-child cycles)
+                if self._would_create_cycle(session, issue_id, potential_child.id, DependencyType.PARENT_CHILD):
                     continue
                 
                 # Apply issue type hierarchy rules

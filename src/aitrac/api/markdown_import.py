@@ -185,10 +185,18 @@ async def _import_issues(parsed_issues: list) -> Dict[str, int]:
                     print(f"Warning: Failed to create parent-child relationship "
                           f"{issue_id} -> {parent_id}: {e}")
         
-        # Create explicit dependency relationships
+        # Create explicit blocking dependency relationships
+        # Skip dependencies that are already covered by parent-child relationships
         for dep_logical_id in parsed_issue.dependencies:
             dep_physical_id = logical_to_physical_mapping.get(dep_logical_id)
             if dep_physical_id and dep_physical_id != issue_id:
+                # Skip if this dependency is the same as the parent relationship
+                # to avoid creating redundant BLOCKS dependency on top of PARENT_CHILD
+                if parsed_issue.parent_logical_id == dep_logical_id:
+                    print(f"Skipping redundant dependency: {parsed_issue.logical_id} -> {dep_logical_id} "
+                          f"(already covered by parent-child relationship)")
+                    continue
+                
                 try:
                     dependency_service.add_dependency(
                         issue_id=issue_id,
