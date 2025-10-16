@@ -22,6 +22,11 @@ function Layout({ children }) {
               </Link>
             </li>
             <li>
+              <Link to="/journal" className={isActive('/journal') ? 'active' : ''}>
+                📝 Journal
+              </Link>
+            </li>
+            <li>
               <Link to="/import" className={isActive('/import') ? 'active' : ''}>
                 📥 Import
               </Link>

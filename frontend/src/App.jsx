@@ -5,6 +5,7 @@ import IssueDetails from './pages/IssueDetails'
 import CreateIssue from './pages/CreateIssue'
 import ReadyWork from './pages/ReadyWork'
 import MarkdownImport from './pages/MarkdownImport'
+import Journal from './pages/Journal'
 import { NotificationProvider } from './components/NotificationProvider'
 import NotificationContainer from './components/NotificationContainer'
 
@@ -18,6 +19,7 @@ function App() {
           <Route path="/create" element={<CreateIssue />} />
           <Route path="/ready" element={<ReadyWork />} />
           <Route path="/import" element={<MarkdownImport />} />
+          <Route path="/journal" element={<Journal />} />
         </Routes>
       </Layout>
       <NotificationContainer />

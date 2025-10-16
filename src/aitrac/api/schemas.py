@@ -147,6 +147,37 @@ class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
 
+# Journal schemas
+class JournalIssueReference(BaseModel):
+    """Schema for issue references in journal entries"""
+    id: str
+    title: str
+    description: str
+
+class JournalEntryCreate(BaseModel):
+    """Schema for creating journal entries"""
+    title: str = Field(..., max_length=500, description="Entry title")
+    summary: str = Field(..., description="Work summary")
+    issue_ids: List[str] = Field(default_factory=list, description="Related issue IDs")
+    files_modified: List[str] = Field(default_factory=list, description="Modified file paths")
+
+class JournalEntryResponse(BaseModel):
+    """Schema for journal entry responses"""
+    id: str
+    title: str
+    summary: str
+    timestamp: str
+    issues: List[JournalIssueReference]
+    files_modified: List[str]
+
+class JournalListResponse(BaseModel):
+    """Schema for journal list responses"""
+    entries: List[JournalEntryResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
 class ChildIssueResponse(BaseModel):
     """Schema for child issue responses with full issue details"""
     issue_id: str

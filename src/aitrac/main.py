@@ -15,6 +15,7 @@ from aitrac.api.issues import router as issues_router
 from aitrac.api.dependencies import router as dependencies_router
 from aitrac.api.work import router as work_router
 from aitrac.api.markdown_import import router as markdown_import_router
+from aitrac.api.journal import router as journal_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -47,6 +48,7 @@ app.include_router(issues_router, prefix="/api/issues", tags=["issues"])
 app.include_router(dependencies_router, prefix="/api/issues", tags=["dependencies"])
 app.include_router(work_router, prefix="/api/work", tags=["work"])
 app.include_router(markdown_import_router, prefix="/api/import/markdown", tags=["import"])
+app.include_router(journal_router, prefix="/api/journal", tags=["journal"])
 
 # Static files (React build)
 static_dir = Path(__file__).parent / "static"

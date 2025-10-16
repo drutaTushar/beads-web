@@ -62,6 +62,12 @@ function IssueDetails() {
     enabled: showDependencyTools
   })
 
+  const { data: journalEntries = [], error: journalError } = useQuery({
+    queryKey: ['journal-entries', issueId],
+    queryFn: () => api.get(`/journal/entries/by-issue/${issueId}`),
+    enabled: !!issueId
+  })
+
   // Error handling
   useEffect(() => {
     if (error) handleQueryError(error, showError)
@@ -90,6 +96,10 @@ function IssueDetails() {
   useEffect(() => {
     if (allIssuesError) handleQueryError(allIssuesError, showError)
   }, [allIssuesError, showError])
+
+  useEffect(() => {
+    if (journalError) handleQueryError(journalError, showError)
+  }, [journalError, showError])
 
   // Dedicated status transition mutations
   const startIssueMutation = useMutation({
@@ -813,6 +823,74 @@ function IssueDetails() {
                   <div className="loading-message">Loading dependency tree...</div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Journal Entries Section */}
+      <div className="journal-section">
+        <h3>📝 Journal Entries</h3>
+        <p className="section-description">
+          Work progress and insights related to this issue
+        </p>
+        
+        {journalEntries.length === 0 ? (
+          <div className="empty-state">
+            <p>No journal entries found for this issue.</p>
+            <p>Journal entries are created when AI agents complete work related to this issue.</p>
+          </div>
+        ) : (
+          <div className="journal-entries-compact">
+            {journalEntries.map((entry) => (
+              <div key={entry.id} className="journal-entry-compact">
+                <div className="entry-header-compact">
+                  <h4 className="entry-title-compact">{entry.title}</h4>
+                  <span className="entry-timestamp-compact">
+                    {new Date(entry.timestamp).toLocaleDateString()}
+                  </span>
+                </div>
+                
+                <div className="entry-summary-compact">
+                  {entry.summary.length > 150 
+                    ? `${entry.summary.substring(0, 150)}...` 
+                    : entry.summary
+                  }
+                </div>
+                
+                {entry.files_modified.length > 0 && (
+                  <div className="entry-files-compact">
+                    <strong>Files:</strong> {entry.files_modified.slice(0, 3).join(', ')}
+                    {entry.files_modified.length > 3 && ` +${entry.files_modified.length - 3} more`}
+                  </div>
+                )}
+                
+                {entry.issues.length > 1 && (
+                  <div className="entry-related-issues">
+                    <strong>Also relates to:</strong>{' '}
+                    {entry.issues
+                      .filter(issue => issue.id !== issueId)
+                      .slice(0, 2)
+                      .map(issue => (
+                        <a 
+                          key={issue.id} 
+                          href={`/issues/${issue.id}`}
+                          className="related-issue-link"
+                        >
+                          {issue.id}
+                        </a>
+                      ))
+                      .reduce((prev, curr) => [prev, ', ', curr])
+                    }
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            <div className="journal-actions">
+              <a href={`/journal?issue_id=${issueId}`} className="btn btn-secondary">
+                View All Journal Entries for This Issue
+              </a>
             </div>
           </div>
         )}
