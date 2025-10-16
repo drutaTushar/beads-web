@@ -102,7 +102,7 @@ function HierarchicalIssueList({ hierarchicalIssues, standaloneIssues }) {
               
               <div className="issue-info">
                 <div className="issue-title-row">
-                  <span className="issue-id"></span>
+                  <span className="issue-id">#{issue.id}</span>
                   <span 
                     className="issue-title"
                     onClick={() => navigate(`/issues/${issue.id}`)}

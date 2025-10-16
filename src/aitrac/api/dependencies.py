@@ -129,26 +129,37 @@ async def get_dependency_tree(
 async def why_blocked(issue_id: str):
     """Analyze why an issue is blocked (find shortest path to open dependency)"""
     
+    print(f"[WHY_BLOCKED_API] Analyzing blocking for issue {issue_id}")
+    
     # Check if issue exists
     issue = issue_service.get_issue(issue_id)
     if not issue:
         raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found")
     
+    print(f"[WHY_BLOCKED_API] Issue found: {issue.title} (status: {issue.status})")
+    
     blocking_path = dependency_service.find_blocking_path(issue_id)
     
+    print(f"[WHY_BLOCKED_API] Blocking path result: {blocking_path}")
+    
     if not blocking_path:
-        return {
+        result = {
             "blocked": False,
             "message": "Issue is not blocked by dependencies",
             "blocking_path": []
         }
+        print(f"[WHY_BLOCKED_API] Returning not blocked: {result}")
+        return result
     
-    return {
+    result = {
         "blocked": True,
         "message": f"Issue is blocked by {len(blocking_path)} dependency chain",
         "blocking_path": blocking_path,
         "blocking_issue": blocking_path[-1] if blocking_path else None
     }
+    
+    print(f"[WHY_BLOCKED_API] Returning blocked result: {result}")
+    return result
 
 
 

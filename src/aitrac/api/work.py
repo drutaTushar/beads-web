@@ -17,7 +17,11 @@ async def get_ready_work(limit: int = Query(50, ge=1, le=100, description="Maxim
     - Recursive dependency resolution for parent-child relationships
     - Sorted by priority (0 highest, 4 lowest)
     """
+    print(f"[READY_WORK_API] Starting ready work query with limit={limit}")
     ready_issues = dependency_service.get_ready_work(limit=limit)
+    print(f"[READY_WORK_API] Found {len(ready_issues)} ready issues")
+    for issue in ready_issues:
+        print(f"[READY_WORK_API] Ready issue: {issue.id} - {issue.title} ({issue.status})")
     return [IssueResponse.from_orm(issue) for issue in ready_issues]
 
 @router.get("/blocked")

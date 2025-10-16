@@ -147,6 +147,16 @@ function IssueDetails() {
     onError: (error) => handleQueryError(error, showError)
   })
 
+  const deleteIssueMutation = useMutation({
+    mutationFn: () => api.delete(`/issues/${issueId}/permanent`),
+    onSuccess: () => {
+      showSuccess('Issue permanently deleted')
+      // Navigate back to issues list since this issue no longer exists
+      navigate('/')
+    },
+    onError: (error) => handleQueryError(error, showError)
+  })
+
   // Legacy status update mutation (keep for backward compatibility)
   const updateStatusMutation = useMutation({
     mutationFn: (status) => api.put(`/issues/${issueId}`, { status }),
@@ -250,6 +260,24 @@ function IssueDetails() {
   const handleRemoveChild = (childId) => {
     if (confirm(`Remove child relationship with issue ${childId}?`)) {
       removeChildMutation.mutate(childId)
+    }
+  }
+
+  const handleDeleteIssue = () => {
+    const hasChildren = children && children.length > 0
+    
+    if (hasChildren) {
+      alert(`Cannot delete this issue: it has ${children.length} child issues. Please remove all children first.`)
+      return
+    }
+    
+    const confirmMessage = `⚠️ PERMANENT DELETE ⚠️\n\nAre you absolutely sure you want to permanently delete this issue?\n\n"${issue.title}"\n\nThis action cannot be undone. The issue and all its data will be permanently removed from the database.`
+    
+    if (confirm(confirmMessage)) {
+      const doubleConfirm = confirm('This is your final confirmation. Delete this issue permanently?')
+      if (doubleConfirm) {
+        deleteIssueMutation.mutate()
+      }
     }
   }
 
@@ -608,6 +636,22 @@ function IssueDetails() {
             <span className="issue-meta-label">Updated</span>
             <span className="issue-meta-value">{formatDate(issue.updated_at)}</span>
           </div>
+
+          {/* Dangerous Actions */}
+          <div className="dangerous-actions">
+            <h4>Dangerous Actions</h4>
+            <button
+              onClick={handleDeleteIssue}
+              className="btn btn-danger btn-sm"
+              disabled={deleteIssueMutation.isPending}
+              title={children && children.length > 0 ? `Cannot delete: has ${children.length} children` : 'Permanently delete this issue'}
+            >
+              {deleteIssueMutation.isPending ? 'Deleting...' : '🗑️ Delete Permanently'}
+            </button>
+            <div className="danger-warning">
+              ⚠️ Permanent deletion cannot be undone
+            </div>
+          </div>
         </div>
       </div>
 
@@ -730,7 +774,7 @@ function IssueDetails() {
               )}
             </div>
 
-            { /* whyBlocked && whyBlocked.blocked && (
+            {  whyBlocked && whyBlocked.blocked && (
               <div className="why-blocked-section">
                 <h4>Why Blocked?</h4>
                 <div className="blocked-info">
@@ -754,7 +798,7 @@ function IssueDetails() {
                   )}
                 </div>
               </div>
-            ) */}
+            ) }
 
             <div className="dependency-tree-section">
               <h4>Dependency Tree</h4>

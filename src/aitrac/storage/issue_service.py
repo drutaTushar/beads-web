@@ -392,6 +392,83 @@ class IssueService:
             comment=comment
         )
         session.add(event)
+    
+    def delete_issue(self, issue_id: str, actor: str = "system") -> bool:
+        """Delete an issue permanently
+        
+        Returns True if deleted successfully, False if issue not found.
+        Raises ValueError if issue has children or dependencies.
+        """
+        
+        with get_db_session() as session:
+            # First check if issue exists
+            issue = session.query(Issue).filter(Issue.id == issue_id).first()
+            if not issue:
+                return False
+            
+            print(f"[DELETE_ISSUE] Attempting to delete issue {issue_id} ({issue.title})")
+            
+            # Check if issue has children (parent-child dependencies where this issue is the parent)
+            from ..models import Dependency, DependencyType
+            children = (
+                session.query(Dependency)
+                .filter(
+                    and_(
+                        Dependency.depends_on_id == issue_id,
+                        Dependency.type == DependencyType.PARENT_CHILD
+                    )
+                )
+                .all()
+            )
+            
+            if children:
+                child_ids = [dep.issue_id for dep in children]
+                print(f"[DELETE_ISSUE] Issue {issue_id} has {len(children)} children: {child_ids}")
+                raise ValueError(f"Cannot delete issue {issue_id}: it has {len(children)} child issues. Remove children first.")
+            
+            # Check if issue has any dependencies pointing to it
+            dependents = (
+                session.query(Dependency)
+                .filter(Dependency.depends_on_id == issue_id)
+                .all()
+            )
+            
+            if dependents:
+                dependent_ids = [dep.issue_id for dep in dependents]
+                print(f"[DELETE_ISSUE] Issue {issue_id} has {len(dependents)} dependents: {dependent_ids}")
+                raise ValueError(f"Cannot delete issue {issue_id}: {len(dependents)} other issues depend on it. Remove dependencies first.")
+            
+            # Delete all dependencies where this issue is the dependent
+            dependencies_from_issue = (
+                session.query(Dependency)
+                .filter(Dependency.issue_id == issue_id)
+                .all()
+            )
+            
+            print(f"[DELETE_ISSUE] Deleting {len(dependencies_from_issue)} dependencies from issue {issue_id}")
+            for dep in dependencies_from_issue:
+                session.delete(dep)
+            
+            # Delete all events related to this issue
+            events = session.query(Event).filter(Event.issue_id == issue_id).all()
+            print(f"[DELETE_ISSUE] Deleting {len(events)} events for issue {issue_id}")
+            for event in events:
+                session.delete(event)
+            
+            # Finally delete the issue itself
+            print(f"[DELETE_ISSUE] Deleting issue {issue_id}")
+            session.delete(issue)
+            
+            # Log the deletion (note: this will be deleted with the issue, but good for audit trail)
+            self._log_event(
+                session, issue_id, EventType.CREATED, actor,  # Using CREATED as placeholder
+                old_value=f"Issue '{issue.title}' deleted",
+                comment="Issue permanently deleted"
+            )
+            
+            session.commit()
+            print(f"[DELETE_ISSUE] Successfully deleted issue {issue_id}")
+            return True
 
 
 # Global service instance

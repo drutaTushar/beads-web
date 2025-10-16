@@ -6,7 +6,7 @@ from sqlalchemy import and_, or_, desc
 from datetime import datetime
 import json
 
-from ..models import Issue, Dependency, Event, DependencyType, EventType
+from ..models import Issue, Dependency, Event, DependencyType, EventType, Status
 from .database import get_db_session
 
 
@@ -208,8 +208,10 @@ class DependencyService:
         
         return build_tree(issue_id)
     
-    def find_blocking_path(self, issue_id: str) -> List[str]:
+    def find_blocking_path(self, issue_id: str) -> List[Dict[str, Any]]:
         """Find the shortest path to an open blocking dependency"""
+        
+        print(f"[WHY_BLOCKED] Finding blocking path for issue {issue_id}")
         
         with get_db_session() as session:
             visited = set()
@@ -217,22 +219,37 @@ class DependencyService:
             
             while queue:
                 current_id, path = queue.pop(0)
+                print(f"[WHY_BLOCKED] Processing {current_id}, path so far: {[p['id'] for p in path]}")
                 
                 if current_id in visited:
+                    print(f"[WHY_BLOCKED] Already visited {current_id}, skipping")
                     continue
                 visited.add(current_id)
                 
                 # Get current issue status
                 issue = session.query(Issue).filter(Issue.id == current_id).first()
                 if not issue:
+                    print(f"[WHY_BLOCKED] Issue {current_id} not found")
                     continue
                 
+                print(f"[WHY_BLOCKED] Issue {current_id} ({issue.title}) status: {issue.status}")
+                
                 # If this issue is open and we're not at the root, we found a blocker
-                if issue.status.value == "open" and path:
-                    return path + [current_id]
+                if issue.status == Status.OPEN and path:
+                    # Create issue object for this blocking issue
+                    current_issue_obj = {
+                        "id": issue.id,
+                        "title": issue.title,
+                        "status": issue.status.value,
+                        "issue_type": issue.issue_type.value
+                    }
+                    blocking_path = path + [current_issue_obj]
+                    print(f"[WHY_BLOCKED] Found blocking path: {[p['id'] for p in blocking_path]}")
+                    return blocking_path
                 
                 # If this issue is closed, continue exploring dependencies
-                if issue.status.value == "closed":
+                if issue.status == Status.CLOSED:
+                    print(f"[WHY_BLOCKED] Issue {current_id} is closed, skipping dependencies")
                     continue
                 
                 # Get dependencies and add to queue
@@ -247,10 +264,23 @@ class DependencyService:
                     .all()
                 )
                 
+                print(f"[WHY_BLOCKED] Issue {current_id} has {len(dependencies)} dependencies")
+                
                 for dep in dependencies:
+                    print(f"[WHY_BLOCKED] Dependency: {current_id} -> {dep.depends_on_id} (type: {dep.type.value})")
                     if dep.depends_on_id not in visited:
-                        queue.append((dep.depends_on_id, path + [current_id]))
+                        # Create issue object for path tracking
+                        current_issue_obj = {
+                            "id": issue.id,
+                            "title": issue.title,
+                            "status": issue.status.value,
+                            "issue_type": issue.issue_type.value
+                        }
+                        queue.append((dep.depends_on_id, path + [current_issue_obj]))
+                    else:
+                        print(f"[WHY_BLOCKED] {dep.depends_on_id} already visited")
             
+            print(f"[WHY_BLOCKED] No blocking path found for {issue_id}")
             return []  # No blocking path found
     
     def _would_create_cycle(self, session: Session, from_id: str, to_id: str, dependency_type: DependencyType = None) -> bool:
@@ -325,27 +355,55 @@ class DependencyService:
         
         An issue is ready if:
         1. It is open (not closed)
-        2. All its blocking dependencies are closed/completed
-        3. All its parent issues are also not blocked
+        2. All its BLOCKING dependencies are closed (BLOCKS type)
+        3. If it has children, all children must be closed (can't complete parent with open children)
+        4. Parent-child relationships don't block starting work (children can work under open parents)
+        
+        This allows proper hierarchical work where tasks can start under open epics/features.
         """
         
         with get_db_session() as session:
             from .issue_service import issue_service
             
-            # Get all open issues
+            print(f"[READY_WORK] Starting ready work analysis with limit={limit}")
+            
+            # First, let's see what statuses exist in the database
+            all_issues = session.query(Issue).all()
+            print(f"[READY_WORK] Total issues in database: {len(all_issues)}")
+            status_counts = {}
+            for issue in all_issues:
+                status = issue.status.value if hasattr(issue.status, 'value') else str(issue.status)
+                status_counts[status] = status_counts.get(status, 0) + 1
+                print(f"[READY_WORK] Issue {issue.id}: status={status} (type: {type(issue.status)})")
+            print(f"[READY_WORK] Status distribution: {status_counts}")
+            
+            # Get all open issues using Status enum values
+            from ..models.base import Status
             open_issues = (
                 session.query(Issue)
-                .filter(Issue.status.in_(["open", "in_progress"]))
+                .filter(Issue.status.in_([Status.OPEN, Status.IN_PROGRESS]))
                 .all()
             )
+            
+            print(f"[READY_WORK] Found {len(open_issues)} open issues")
+            for issue in open_issues:
+                print(f"[READY_WORK] Open issue: {issue.id} - {issue.title} ({issue.status}, type={issue.issue_type.value}, priority={issue.priority})")
             
             ready_issues = []
             
             for issue in open_issues:
-                if self._is_issue_ready(session, issue):
+                print(f"[READY_WORK] Checking if issue {issue.id} ({issue.title}) is ready...")
+                is_ready = self._is_issue_ready(session, issue)
+                print(f"[READY_WORK] Issue {issue.id} ready status: {is_ready}")
+                
+                if is_ready:
                     ready_issues.append(issue)
+                    print(f"[READY_WORK] Added {issue.id} to ready list (current count: {len(ready_issues)})")
                     if len(ready_issues) >= limit:
+                        print(f"[READY_WORK] Reached limit of {limit}, stopping")
                         break
+            
+            print(f"[READY_WORK] Final ready issues count: {len(ready_issues)}")
             
             # Sort by priority (0 highest, 4 lowest)
             ready_issues.sort(key=lambda x: x.priority)
@@ -357,35 +415,93 @@ class DependencyService:
             return ready_issues
     
     def _is_issue_ready(self, session: Session, issue: Issue) -> bool:
-        """Check if an issue is ready to start"""
+        """Check if an issue is ready to start
         
-        # Get all dependencies for this issue
-        dependencies = (
+        An issue is ready if:
+        1. It has no children (leaf node) OR all its children are closed
+        2. All its BLOCKING dependencies are closed
+        3. Parent-child relationships don't block readiness (children can work under open parents)
+        """
+        
+        print(f"  [READY_CHECK] Analyzing issue {issue.id} ({issue.title})")
+        
+        # First check: If this issue has children, it's only ready if all children are closed
+        # (You can't complete a parent until all children are done)
+        children = (
             session.query(Dependency)
-            .filter(Dependency.issue_id == issue.id)
+            .filter(
+                and_(
+                    Dependency.depends_on_id == issue.id,
+                    Dependency.type == DependencyType.PARENT_CHILD
+                )
+            )
             .all()
         )
         
-        for dep in dependencies:
-            # Get the dependent issue
-            dependent_issue = (
+        print(f"  [READY_CHECK] Issue {issue.id} has {len(children)} children")
+        
+        for child_dep in children:
+            child_issue = (
+                session.query(Issue)
+                .filter(Issue.id == child_dep.issue_id)
+                .first()
+            )
+            if child_issue:
+                print(f"  [READY_CHECK] Child {child_issue.id} ({child_issue.title}) status: {child_issue.status}")
+                if child_issue.status != Status.CLOSED:
+                    print(f"  [READY_CHECK] BLOCKED: Issue {issue.id} has open child {child_issue.id}")
+                    return False  # Can't complete parent while children are open
+        
+        # Second check: All BLOCKING dependencies must be closed
+        blocking_dependencies = (
+            session.query(Dependency)
+            .filter(
+                and_(
+                    Dependency.issue_id == issue.id,
+                    Dependency.type == DependencyType.BLOCKS
+                )
+            )
+            .all()
+        )
+        
+        print(f"  [READY_CHECK] Issue {issue.id} has {len(blocking_dependencies)} blocking dependencies")
+        
+        for dep in blocking_dependencies:
+            blocking_issue = (
                 session.query(Issue)
                 .filter(Issue.id == dep.depends_on_id)
                 .first()
             )
             
-            if not dependent_issue:
-                continue
-                
-            # If dependency is not closed, this issue is not ready
-            if dependent_issue.status != "closed":
-                return False
-                
-            # For parent-child relationships, check recursively that parent is not blocked
-            if dep.type == DependencyType.PARENT_CHILD:
-                if not self._is_issue_ready(session, dependent_issue):
-                    return False
+            if blocking_issue:
+                print(f"  [READY_CHECK] Blocking dependency {blocking_issue.id} ({blocking_issue.title}) status: {blocking_issue.status}")
+                if blocking_issue.status != Status.CLOSED:
+                    print(f"  [READY_CHECK] BLOCKED: Issue {issue.id} blocked by open dependency {blocking_issue.id}")
+                    return False  # Blocked by open dependency
         
+        # Check parent-child relationships (for info only - these don't block)
+        parent_dependencies = (
+            session.query(Dependency)
+            .filter(
+                and_(
+                    Dependency.issue_id == issue.id,
+                    Dependency.type == DependencyType.PARENT_CHILD
+                )
+            )
+            .all()
+        )
+        
+        print(f"  [READY_CHECK] Issue {issue.id} has {len(parent_dependencies)} parent relationships")
+        for dep in parent_dependencies:
+            parent_issue = (
+                session.query(Issue)
+                .filter(Issue.id == dep.depends_on_id)
+                .first()
+            )
+            if parent_issue:
+                print(f"  [READY_CHECK] Parent {parent_issue.id} ({parent_issue.title}) status: {parent_issue.status} (doesn't block)")
+        
+        print(f"  [READY_CHECK] Issue {issue.id} is READY")
         return True
 
     def get_eligible_parents(self, issue_id: str) -> List[Issue]:

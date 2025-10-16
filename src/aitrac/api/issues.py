@@ -376,6 +376,41 @@ async def get_issue_events(
     events = issue_service.get_issue_events(issue_id, limit=limit)
     return [EventResponse.from_orm(event) for event in events]
 
+@router.delete("/{issue_id}/permanent", response_model=SuccessResponse)
+async def delete_issue_permanent(issue_id: str):
+    """Permanently delete an issue and all its data
+    
+    This is different from closing an issue. The issue will be completely removed
+    from the database. This action cannot be undone.
+    
+    Requirements:
+    - Issue must have no children
+    - Issue must have no other issues depending on it
+    """
+    
+    try:
+        print(f"[DELETE_API] Attempting to permanently delete issue {issue_id}")
+        
+        success = issue_service.delete_issue(issue_id, actor="api")
+        
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found")
+        
+        print(f"[DELETE_API] Successfully deleted issue {issue_id}")
+        
+        return SuccessResponse(
+            message=f"Issue {issue_id} permanently deleted",
+            id=issue_id
+        )
+        
+    except ValueError as e:
+        # This will be raised if issue has children or dependents
+        print(f"[DELETE_API] Delete validation failed for {issue_id}: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"[DELETE_API] Unexpected error deleting {issue_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete issue: {str(e)}")
+
 @router.post("/{issue_id}/events", response_model=SuccessResponse, status_code=201)
 async def add_issue_event(issue_id: str, event_data: dict):
     """Add an event to an issue (primarily for comments)"""
