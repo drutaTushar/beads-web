@@ -78,7 +78,7 @@ function HierarchicalIssueList({ hierarchicalIssues, standaloneIssues }) {
     const isExpanded = expandedIssues.has(issue.id)
     const hasChildren = issue.children && issue.children.length > 0
     const indentStyle = {
-      paddingLeft: `${depth * 1.5}rem`
+      paddingLeft: `${1.5 + (depth * 1.5)}rem`
     }
 
     return (
@@ -102,7 +102,7 @@ function HierarchicalIssueList({ hierarchicalIssues, standaloneIssues }) {
               
               <div className="issue-info">
                 <div className="issue-title-row">
-                  <span className="issue-id">#{issue.id}</span>
+                  <span className="issue-id"></span>
                   <span 
                     className="issue-title"
                     onClick={() => navigate(`/issues/${issue.id}`)}
