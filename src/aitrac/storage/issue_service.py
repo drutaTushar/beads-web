@@ -77,6 +77,14 @@ class IssueService:
                 session.expunge(issue)
             return issue
     
+    def get_issue_by_markdown_id(self, markdown_id: str) -> Optional[Issue]:
+        """Get issue by markdown_id"""
+        with get_db_session() as session:
+            issue = session.query(Issue).filter(Issue.markdown_id == markdown_id).first()
+            if issue:
+                session.expunge(issue)
+            return issue
+    
     def list_issues(
         self, 
         status: Optional[Status] = None,
