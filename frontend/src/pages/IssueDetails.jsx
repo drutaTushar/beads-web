@@ -730,7 +730,7 @@ function IssueDetails() {
               )}
             </div>
 
-            {whyBlocked && whyBlocked.blocked && (
+            { /* whyBlocked && whyBlocked.blocked && (
               <div className="why-blocked-section">
                 <h4>Why Blocked?</h4>
                 <div className="blocked-info">
@@ -754,7 +754,7 @@ function IssueDetails() {
                   )}
                 </div>
               </div>
-            )}
+            ) */}
 
             <div className="dependency-tree-section">
               <h4>Dependency Tree</h4>
