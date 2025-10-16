@@ -4,6 +4,7 @@ import IssueList from './pages/IssueList'
 import IssueDetails from './pages/IssueDetails'
 import CreateIssue from './pages/CreateIssue'
 import ReadyWork from './pages/ReadyWork'
+import MarkdownImport from './pages/MarkdownImport'
 import { NotificationProvider } from './components/NotificationProvider'
 import NotificationContainer from './components/NotificationContainer'
 
@@ -16,6 +17,7 @@ function App() {
           <Route path="/issues/:issueId" element={<IssueDetails />} />
           <Route path="/create" element={<CreateIssue />} />
           <Route path="/ready" element={<ReadyWork />} />
+          <Route path="/import" element={<MarkdownImport />} />
         </Routes>
       </Layout>
       <NotificationContainer />

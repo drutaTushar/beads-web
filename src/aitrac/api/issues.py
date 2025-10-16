@@ -61,6 +61,116 @@ async def list_issues(
         limit=limit
     )
 
+@router.get("/hierarchical")
+async def get_hierarchical_issues():
+    """Get issues organized in hierarchical structure"""
+    from ..storage.dependency_service import dependency_service
+    from ..storage.database import get_db_session
+    from ..models.issue import Issue
+    from ..models.dependency import Dependency, DependencyType
+    from sqlalchemy.orm import joinedload
+    
+    with get_db_session() as session:
+        # Get all issues with their children
+        all_issues = session.query(Issue).all()
+        
+        # Get all parent-child relationships
+        parent_child_deps = session.query(Dependency).filter(
+            Dependency.type == DependencyType.PARENT_CHILD
+        ).all()
+        
+        # Create mappings
+        issue_map = {issue.id: issue for issue in all_issues}
+        children_map = {}  # parent_id -> [child_issues]
+        parent_map = {}    # child_id -> parent_id
+        
+        for dep in parent_child_deps:
+            parent_id = dep.depends_on_id  # Parent
+            child_id = dep.issue_id        # Child
+            
+            if parent_id not in children_map:
+                children_map[parent_id] = []
+            children_map[parent_id].append(issue_map[child_id])
+            parent_map[child_id] = parent_id
+        
+        # Find root issues (epics and issues without parents)
+        root_issues = []
+        standalone_issues = []
+        
+        for issue in all_issues:
+            if issue.id not in parent_map:  # No parent
+                if issue.issue_type.value == 'epic':
+                    root_issues.append(issue)
+                else:
+                    # Check if it has children
+                    if issue.id in children_map:
+                        root_issues.append(issue)
+                    else:
+                        standalone_issues.append(issue)
+        
+        # Build hierarchical structure
+        def build_issue_tree(issue):
+            children = children_map.get(issue.id, [])
+            # Sort children by child_order if available, then by creation time
+            children.sort(key=lambda x: (
+                next((dep.child_order for dep in parent_child_deps if dep.issue_id == x.id), 999),
+                x.created_at
+            ))
+            
+            # Calculate status summary for children
+            status_counts = {}
+            for child in children:
+                status = child.status.value
+                status_counts[status] = status_counts.get(status, 0) + 1
+            
+            return {
+                "id": issue.id,
+                "title": issue.title,
+                "description": issue.description,
+                "status": issue.status.value,
+                "priority": issue.priority,
+                "issue_type": issue.issue_type.value,
+                "assignee": issue.assignee,
+                "estimated_minutes": issue.estimated_minutes,
+                "created_at": issue.created_at.isoformat(),
+                "updated_at": issue.updated_at.isoformat(),
+                "children": [build_issue_tree(child) for child in children],
+                "children_status_summary": status_counts
+            }
+        
+        # Build the hierarchical structure
+        hierarchical_issues = [build_issue_tree(issue) for issue in root_issues]
+        standalone_issue_data = [
+            {
+                "id": issue.id,
+                "title": issue.title,
+                "description": issue.description,
+                "status": issue.status.value,
+                "priority": issue.priority,
+                "issue_type": issue.issue_type.value,
+                "assignee": issue.assignee,
+                "estimated_minutes": issue.estimated_minutes,
+                "created_at": issue.created_at.isoformat(),
+                "updated_at": issue.updated_at.isoformat(),
+                "children": [],
+                "children_status_summary": {}
+            }
+            for issue in standalone_issues
+        ]
+        
+        # Expunge all objects to avoid DetachedInstanceError
+        for issue in all_issues:
+            session.expunge(issue)
+        for dep in parent_child_deps:
+            session.expunge(dep)
+        
+        return {
+            "hierarchical_issues": hierarchical_issues,
+            "standalone_issues": standalone_issue_data,
+            "total_hierarchical": len(hierarchical_issues),
+            "total_standalone": len(standalone_issues)
+        }
+
 @router.post("/", response_model=IssueResponse, status_code=201)
 async def create_issue(issue_data: IssueCreate):
     """Create a new issue"""

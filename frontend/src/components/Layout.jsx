@@ -22,6 +22,11 @@ function Layout({ children }) {
               </Link>
             </li>
             <li>
+              <Link to="/import" className={isActive('/import') ? 'active' : ''}>
+                📥 Import
+              </Link>
+            </li>
+            <li>
               <Link to="/create" className="btn btn-primary">
                 Create Issue
               </Link>
