@@ -52,8 +52,12 @@ aitrac = "aitrac.cli:main"
 packages = ["src/aitrac"]
 artifacts = [
   "src/aitrac/alembic.ini",
-  "src/aitrac/migrations/**/*"
+  "src/aitrac/migrations/**/*",
+  "src/aitrac/static/**/*"
 ]
+
+[tool.hatch.build]
+ignore-vcs = true
 
 [tool.black]
 line-length = 88
