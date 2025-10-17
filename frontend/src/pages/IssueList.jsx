@@ -65,18 +65,20 @@ function IssueList() {
       }
     } else {
       // Filter flat data (fallback)
-      if (!data.issues) return { hierarchical_issues: [], standalone_issues: [] }
-      
+      if (!data || !data.issues || !Array.isArray(data.issues)) {
+        return { hierarchical_issues: [], standalone_issues: [] }
+      }
+
       const filteredIssues = data.issues.filter(issue => {
-        const matchesSearch = searchTerm === '' || 
+        const matchesSearch = searchTerm === '' ||
           issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          issue.description.toLowerCase().includes(searchTerm.toLowerCase())
-        
+          (issue.description && issue.description.toLowerCase().includes(searchTerm.toLowerCase()))
+
         const matchesStatus = statusFilter === '' || issue.status === statusFilter
-        
+
         return matchesSearch && matchesStatus
       })
-      
+
       return { hierarchical_issues: [], standalone_issues: filteredIssues }
     }
   }, [data, searchTerm, statusFilter, viewMode])
