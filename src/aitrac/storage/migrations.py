@@ -19,19 +19,30 @@ def get_database_url() -> str:
 
 def get_migration_config() -> Config:
     """Get Alembic configuration"""
-    # Find project root (where alembic.ini is located)
-    current_dir = Path(__file__).parent
-    project_root = current_dir
-    
-    # Walk up to find alembic.ini
-    while project_root.parent != project_root:
-        alembic_ini = project_root / "alembic.ini"
-        if alembic_ini.exists():
-            break
-        project_root = project_root.parent
-    
+    # Get the aitrac package root directory
+    # This file is in aitrac/storage/, so we go up one level to get to aitrac/
+    package_root = Path(__file__).parent.parent
+
+    # Look for alembic.ini and migrations in the aitrac package directory
+    alembic_ini = package_root / "alembic.ini"
+    migrations_dir = package_root / "migrations"
+
+    if not alembic_ini.exists():
+        raise FileNotFoundError(
+            f"alembic.ini not found at {alembic_ini}. "
+            "This indicates an incomplete installation. "
+            "Please reinstall aitrac."
+        )
+
+    if not migrations_dir.exists():
+        raise FileNotFoundError(
+            f"migrations directory not found at {migrations_dir}. "
+            "This indicates an incomplete installation. "
+            "Please reinstall aitrac."
+        )
+
     alembic_cfg = Config(str(alembic_ini))
-    alembic_cfg.set_main_option("script_location", str(project_root / "migrations"))
+    alembic_cfg.set_main_option("script_location", str(migrations_dir))
     alembic_cfg.set_main_option("sqlalchemy.url", get_database_url())
     return alembic_cfg
 

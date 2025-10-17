@@ -50,6 +50,10 @@ aitrac = "aitrac.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aitrac"]
+artifacts = [
+  "src/aitrac/alembic.ini",
+  "src/aitrac/migrations/**/*"
+]
 
 [tool.black]
 line-length = 88
